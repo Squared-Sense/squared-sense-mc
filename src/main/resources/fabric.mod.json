@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "squared_sense_mc",
+  "version": "${version}",
+  "name": "Squared Sense MC",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/squared_sense_mc/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-datagen": [
+      "org.sqsense.squared_sense_mc.client.SquaredSenseMCDataGenerator"
+    ],
+    "client": [
+      "org.sqsense.squared_sense_mc.client.SquaredSenseMCClient"
+    ],
+    "main": [
+      "org.sqsense.squared_sense_mc.SquaredSenseMC"
+    ]
+  },
+  "mixins": [
+    "squared_sense_mc.mixins.json",
+    {
+      "config": "squared_sense_mc.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
