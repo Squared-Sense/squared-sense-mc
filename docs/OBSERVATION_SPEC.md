@@ -125,7 +125,15 @@ Outputs to `squish_output/`.
       "name": "minecraft:stone",
       "dx": -2,
       "dy": -1,
-      "dz": 4
+      "dz": 4,
+      "properties": {
+        "occupancy": 1.0,
+        "passability": 0.0,
+        "hazard": 0.0,
+        "hardness": 1.5,
+        "lightLevel": 0.0,
+        "fluidFlow": [0.0, 0.0]
+      }
     }
   ]
 }

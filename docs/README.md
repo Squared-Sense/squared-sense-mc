@@ -21,7 +21,12 @@ Welcome to the internal documentation for **Squared Sense MC**, a client-side Mi
    - Intelligent downsampling algorithm ensuring rare/critical blocks are not erased.
    - Classification rules, singleton pointer caching, and case studies.
 
-4. **[Observation Specification & Commands](OBSERVATION_SPEC.md)**
+4. **[Multi-Channel Physical Feature Extraction](PHYSICAL_CHANNELS.md)**
+   - The 6 physical property channels per voxel: Occupancy, Passability, Hazard Flag, Hardness, Light Level, and Fluid Flow.
+   - Egocentric rotation of fluid velocity vectors.
+   - Sub-volume aggregation rules and PyTorch tensor conversion.
+
+5. **[Observation Specification & Commands](OBSERVATION_SPEC.md)**
    - Fixed $16\times 16\times 16$ grid tensors across LODs 0, 1, and 2 (strides 1, 2, and 4).
    - Priority downsampling integration and tie-breaking algorithms.
    - In-game commands (`/observe`, `/obs`, `/squish`).

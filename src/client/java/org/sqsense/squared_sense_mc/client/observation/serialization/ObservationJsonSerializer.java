@@ -82,6 +82,19 @@ public class ObservationJsonSerializer {
         meta.addProperty("coordinateFrame", "relative_player_feet_egocentric");
         meta.addProperty("downsampling", "priority_hierarchy");
 
+        com.google.gson.JsonArray channels = new com.google.gson.JsonArray();
+        channels.add("name");
+        channels.add("dx");
+        channels.add("dy");
+        channels.add("dz");
+        channels.add("occupancy");
+        channels.add("passability");
+        channels.add("hazard");
+        channels.add("hardness");
+        channels.add("lightLevel");
+        channels.add("fluidFlow");
+        meta.add("channels", channels);
+
         JsonObject camera = new JsonObject();
         camera.addProperty("rawYaw", transform.getRawYaw());
         camera.addProperty("rawPitch", transform.getRawPitch());

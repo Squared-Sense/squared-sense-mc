@@ -9,6 +9,8 @@ import net.minecraft.client.world.ClientWorld;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
 import org.sqsense.squared_sense_mc.client.observation.ObservationConfig;
+import org.sqsense.squared_sense_mc.client.observation.channels.PhysicalPropertyExtractor;
+import org.sqsense.squared_sense_mc.client.observation.channels.VoxelPhysicalProperties;
 import org.sqsense.squared_sense_mc.client.observation.geometry.ObservationTransform;
 import org.sqsense.squared_sense_mc.client.observation.priority.BlockPriority;
 import org.sqsense.squared_sense_mc.client.observation.priority.BlockPriorityRegistry;
@@ -19,12 +21,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * High-performance block state sampler for fixed 16x16x16 grids:
+ * High-performance block state and physical channel sampler for fixed 16x16x16 grids:
  * - Uses single BlockPos.Mutable to eliminate thousands of coordinate allocations.
- * - Reuses a single cell frequency map to avoid per-cell Map allocations.
- * - Caches Block -> String registry IDs to eliminate registry lookups and string allocation.
- * - Applies Task 7 Priority Downsampling:
- *   Hazards > Interactive/Critical > Liquids > Foliage > Common Solid > Air.
+ * - Reuses single cell frequency map and single accumulator across cells.
+ * - Caches Block -> String registry IDs.
+ * - Task 7: Priority Downsampling (Hazards > Interactive > Liquids > Foliage > Solid > Air).
+ * - Task 8: Multi-channel physical feature extraction (occupancy, passability, hazard, hardness, light, fluid flow).
  */
 public class BlockSampler {
     private static final Map<Block, String> BLOCK_ID_CACHE = new ConcurrentHashMap<>();
@@ -36,12 +38,14 @@ public class BlockSampler {
     ) {
         final int size = ObservationConfig.GRID_SIZE;
         final int stride = transform.getStride();
+        final int subBlockCount = stride * stride * stride;
         final int playerX = playerPos.getX();
         final int playerY = playerPos.getY();
         final int playerZ = playerPos.getZ();
 
         BlockPos.Mutable mutablePos = new BlockPos.Mutable();
         Map<Block, Integer> cellCounts = new HashMap<>(32);
+        PhysicalPropertyExtractor.Accumulator accumulator = new PhysicalPropertyExtractor.Accumulator();
         Map<String, Integer> globalCounts = new LinkedHashMap<>();
 
         JsonArray xArray = new JsonArray();
@@ -61,15 +65,23 @@ public class BlockSampler {
                     int originZ = playerZ + dz;
 
                     String selectedBlock;
+                    VoxelPhysicalProperties physicalProperties;
 
                     if (stride == 1) {
                         // Fast-path LOD 0: 1:1 direct lookup
                         mutablePos.set(originX, originY, originZ);
                         BlockState state = world.getBlockState(mutablePos);
                         selectedBlock = getBlockId(state.getBlock());
+                        physicalProperties = PhysicalPropertyExtractor.extractSingle(
+                            state,
+                            world,
+                            mutablePos,
+                            transform.getCardinal()
+                        );
                     } else {
-                        // LOD downsampling with Task 7 Priority Hierarchy
+                        // LOD downsampling with Task 7 Priority Hierarchy & Task 8 Property Aggregation
                         cellCounts.clear();
+                        accumulator.reset();
                         BlockPriority highestPriority = BlockPriority.AIR;
 
                         for (int ox = 0; ox < stride; ox++) {
@@ -85,11 +97,17 @@ public class BlockSampler {
                                     }
 
                                     cellCounts.put(block, cellCounts.getOrDefault(block, 0) + 1);
+                                    accumulator.accumulate(state, world, mutablePos);
                                 }
                             }
                         }
 
                         selectedBlock = selectPriorityBlock(cellCounts, highestPriority);
+                        physicalProperties = PhysicalPropertyExtractor.aggregateSubVolume(
+                            accumulator,
+                            subBlockCount,
+                            transform.getCardinal()
+                        );
                     }
 
                     if (isAirId(selectedBlock)) {
@@ -102,6 +120,7 @@ public class BlockSampler {
                     cellObj.addProperty("dx", dx);
                     cellObj.addProperty("dy", dy);
                     cellObj.addProperty("dz", dz);
+                    cellObj.add("properties", physicalProperties.toJsonObject());
 
                     zArray.add(cellObj);
                 }
@@ -116,11 +135,6 @@ public class BlockSampler {
         return new SamplingResult(xArray, globalCounts, totalCells, airCells, nonAirCells);
     }
 
-    /**
-     * Selects the representative block ID using Task 7 priority downsampling:
-     * Filters candidate blocks to only those matching the highest priority tier present,
-     * then selects the mode within that tier (with deterministic tie-breaking).
-     */
     private static String selectPriorityBlock(Map<Block, Integer> cellCounts, BlockPriority highestPriority) {
         Block bestBlock = null;
         int bestCount = -1;
@@ -130,13 +144,11 @@ public class BlockSampler {
             int count = entry.getValue();
             BlockPriority priority = BlockPriorityRegistry.getPriority(block);
 
-            // Only consider blocks that belong to the highest priority tier in this sub-volume
             if (priority == highestPriority) {
                 if (count > bestCount) {
                     bestCount = count;
                     bestBlock = block;
                 } else if (count == bestCount) {
-                    // Deterministic tie-breaking by block identifier
                     if (bestBlock == null) {
                         bestBlock = block;
                     } else {

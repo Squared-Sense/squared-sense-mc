@@ -27,6 +27,9 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 │   └── TargetBlockInfoCommand.java       # Crosshair raycast inspector (/sense_target)
 ├── observation/
 │   ├── ObservationConfig.java            # Central constants (grid size, strides, anchor indices)
+│   ├── channels/
+│   │   ├── VoxelPhysicalProperties.java  # 6-channel physical property data record
+│   │   └── PhysicalPropertyExtractor.java# Density, passability, hazard, hardness, light & fluid flow
 │   ├── geometry/
 │   │   ├── SnappedCardinal.java          # 4 cardinal directions & orthonormal rotation math
 │   │   ├── YawHysteresisTracker.java     # Stateful ±10° deadband yaw stabilization
@@ -49,6 +52,8 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 | Component | Responsibility |
 |---|---|
 | `ObservationConfig` | Global single source of truth for observation dimensions, anchor indices, and LOD strides. |
+| `VoxelPhysicalProperties` | 6-channel continuous feature record (occupancy, passability, hazard, hardness, lightLevel, fluidFlow). |
+| `PhysicalPropertyExtractor` | High-speed single-block and sub-volume physical feature aggregator with egocentric fluid flow rotation. |
 | `SnappedCardinal` | Represents the 4 cardinal directions (SOUTH, WEST, NORTH, EAST) and applies 2D rotation. |
 | `YawHysteresisTracker` | Tracks player rotation statefully, preventing oscillation/thrashing around 45° boundaries. |
 | `PitchWindowCalculator` | Pure function mapping player pitch $[-90^\circ, +90^\circ]$ to vertical foot index $gy \in [1, 12]$. |
