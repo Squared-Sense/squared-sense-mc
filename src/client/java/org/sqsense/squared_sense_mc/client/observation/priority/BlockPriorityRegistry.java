@@ -118,7 +118,7 @@ public final class BlockPriorityRegistry {
         }
 
         if (INTERACTIVE_BLOCKS.contains(block)
-                || state.isIn(BlockTags.ORES)
+                || isOre(state)
                 || state.isIn(BlockTags.SHULKER_BOXES)
                 || state.isIn(BlockTags.BEDS)
                 || state.isIn(BlockTags.DOORS)
@@ -140,6 +140,17 @@ public final class BlockPriorityRegistry {
         }
 
         return BlockPriority.SOLID;
+    }
+
+    private static boolean isOre(BlockState state) {
+        return state.isIn(BlockTags.COAL_ORES)
+                || state.isIn(BlockTags.IRON_ORES)
+                || state.isIn(BlockTags.COPPER_ORES)
+                || state.isIn(BlockTags.GOLD_ORES)
+                || state.isIn(BlockTags.REDSTONE_ORES)
+                || state.isIn(BlockTags.LAPIS_ORES)
+                || state.isIn(BlockTags.DIAMOND_ORES)
+                || state.isIn(BlockTags.EMERALD_ORES);
     }
 }
 
