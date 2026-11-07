@@ -8,6 +8,7 @@ public class ModClientCommands {
             BlockInfoCommand.register(dispatcher);
             TargetBlockInfoCommand.register(dispatcher);
             SquishCommand.register(dispatcher);
+            ObserveCommand.register(dispatcher);
         }));
     }
 }
