@@ -17,7 +17,7 @@
 
     // --- Configuration & Constants ---
     const ATLAS_TILES_PER_ROW = 64;
-    const HEAD_TILES_PER_ROW = 8;
+    const HEAD_TILES_PER_ROW = 16;
     const MAX_INSTANCES = 4096;
     const GRID_SIZE = 16;
 
@@ -288,7 +288,7 @@
                 '#include <uv_vertex>',
                 `#include <uv_vertex>
                  vec2 clampedUv = clamp(uv, 0.005, 0.995);
-                 vHeadUV = instanceHeadUV + clampedUv * (1.0 / 8.0);
+                 vHeadUV = instanceHeadUV + clampedUv * (1.0 / 16.0);
                  vHeadNormal = normal;`
             );
 
@@ -414,7 +414,7 @@
 
     async function loadEntityHeadMetadata() {
         try {
-            const resp = await fetch('/assets/entity_heads.json?v=2.7');
+            const resp = await fetch('/assets/entity_heads.json?v=2.8');
             if (resp.ok) {
                 const data = await resp.json();
                 entityHeadMetadata = data.heads || {};
@@ -429,7 +429,7 @@
     function loadAtlasTexture() {
         const loader = new THREE.TextureLoader();
         atlasTexture = loader.load(
-            '/assets/texture_atlas.png?v=2.7',
+            '/assets/texture_atlas.png?v=2.8',
             (tex) => {
                 tex.magFilter = THREE.NearestFilter;
                 tex.minFilter = THREE.NearestFilter;
@@ -455,7 +455,7 @@
     function loadEntityHeadTexture() {
         const loader = new THREE.TextureLoader();
         entityHeadTexture = loader.load(
-            '/assets/entity_heads.png?v=2.7',
+            '/assets/entity_heads.png?v=2.8',
             (tex) => {
                 tex.magFilter = THREE.NearestFilter;
                 tex.minFilter = THREE.NearestFilter;

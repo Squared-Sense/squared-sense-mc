@@ -24,7 +24,21 @@ public final class EntityClassifier {
         if (entity instanceof Angerable angerable) {
             return angerable.hasAngerTime();
         }
-        return false;
+        String id = getTypeId(entity);
+        return switch (id) {
+            case "minecraft:tnt",
+                 "minecraft:fireball",
+                 "minecraft:small_fireball",
+                 "minecraft:dragon_fireball",
+                 "minecraft:wither_skull",
+                 "minecraft:shulker_bullet",
+                 "minecraft:wind_charge",
+                 "minecraft:breeze_wind_charge",
+                 "minecraft:arrow",
+                 "minecraft:spectral_arrow",
+                 "minecraft:trident" -> true;
+            default -> false;
+        };
     }
 
     /**
@@ -104,6 +118,25 @@ public final class EntityClassifier {
             case "minecraft:wither" -> 51;
             case "minecraft:ender_dragon" -> 52;
             case "minecraft:snow_golem" -> 53;
+            case "minecraft:arrow", "minecraft:spectral_arrow" -> 56;
+            case "minecraft:trident" -> 57;
+            case "minecraft:fireball", "minecraft:small_fireball", "minecraft:dragon_fireball" -> 58;
+            case "minecraft:wind_charge", "minecraft:breeze_wind_charge" -> 59;
+            case "minecraft:wither_skull" -> 60;
+            case "minecraft:shulker_bullet" -> 61;
+            case "minecraft:snowball", "minecraft:egg" -> 62;
+            case "minecraft:ender_pearl", "minecraft:eye_of_ender" -> 63;
+            case "minecraft:potion", "minecraft:splash_potion", "minecraft:lingering_potion", "minecraft:experience_bottle" -> 64;
+            case "minecraft:tnt" -> 65;
+            case "minecraft:end_crystal" -> 66;
+            case "minecraft:item" -> 67;
+            case "minecraft:experience_orb" -> 68;
+            case "minecraft:minecart", "minecraft:chest_minecart", "minecraft:furnace_minecart",
+                 "minecraft:tnt_minecart", "minecraft:hopper_minecart", "minecraft:spawner_minecart",
+                 "minecraft:command_block_minecart" -> 69;
+            case "minecraft:boat", "minecraft:chest_boat" -> 70;
+            case "minecraft:armor_stand" -> 71;
+            case "minecraft:falling_block" -> 72;
             default -> isHostile(entity) ? (byte) 54 : (byte) 55;
         };
     }

@@ -6,6 +6,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.util.math.BlockPos;
 import org.sqsense.squared_sense_mc.client.observation.ObservationConfig;
 import org.sqsense.squared_sense_mc.client.observation.channels.PhysicalPropertyExtractor;
@@ -204,7 +205,7 @@ public class BinaryObservationWriter {
         List<Entity> entities = world.getEntitiesByClass(
             Entity.class,
             transform.getWorldBoundingBox(playerPos),
-            e -> e != player && e.isAlive() && !e.isRemoved()
+            e -> e != player && !e.isRemoved() && (!(e instanceof LivingEntity living) || living.getHealth() > 0.0f)
         );
 
         for (Entity entity : entities) {

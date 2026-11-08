@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import org.sqsense.squared_sense_mc.client.observation.ObservationConfig;
@@ -42,7 +43,7 @@ public class EntityGridSampler {
         List<Entity> entities = world.getEntitiesByClass(
             Entity.class,
             queryBox,
-            e -> e != player && e.isAlive() && !e.isRemoved()
+            e -> e != player && !e.isRemoved() && (!(e instanceof LivingEntity living) || living.getHealth() > 0.0f)
         );
 
         int totalEntities = 0;

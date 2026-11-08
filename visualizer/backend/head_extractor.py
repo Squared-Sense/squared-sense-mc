@@ -12,8 +12,8 @@ from typing import Dict, Optional, Tuple
 from PIL import Image
 
 TILE_SIZE = 16
-TILES_PER_ROW = 8
-ATLAS_SIZE = TILE_SIZE * TILES_PER_ROW  # 128x128 pixels
+TILES_PER_ROW = 16
+ATLAS_SIZE = TILE_SIZE * TILES_PER_ROW  # 256x256 pixels (256 slots)
 
 
 def find_client_jar(custom_path: Optional[str] = None) -> Optional[str]:
@@ -99,7 +99,24 @@ def build_entity_head_atlas(jar_path: str, output_dir: str) -> Tuple[str, str]:
         (52, "ender_dragon", "assets/minecraft/textures/entity/enderdragon/dragon.png", (16, 16, 32, 32), "Ender Dragon", True),
         (53, "snow_golem", "assets/minecraft/textures/entity/snow_golem.png", (8, 8, 16, 16), "Snow Golem", False),
         (54, "hostile", "assets/minecraft/textures/entity/zombie/zombie.png", (8, 8, 16, 16), "Hostile Mob", True),
-        (55, "passive", "assets/minecraft/textures/entity/cow/cow.png", (8, 8, 16, 16), "Passive Mob", False)
+        (55, "passive", "assets/minecraft/textures/entity/cow/cow.png", (8, 8, 16, 16), "Passive Mob", False),
+        (56, "arrow", "assets/minecraft/textures/item/arrow.png", (0, 0, 16, 16), "Arrow", True),
+        (57, "trident", "assets/minecraft/textures/item/trident.png", (0, 0, 16, 16), "Trident", True),
+        (58, "fireball", "assets/minecraft/textures/item/fire_charge.png", (0, 0, 16, 16), "Fireball", True),
+        (59, "wind_charge", "assets/minecraft/textures/item/wind_charge.png", (0, 0, 16, 16), "Wind Charge", True),
+        (60, "wither_skull", "assets/minecraft/textures/entity/skeleton/wither_skeleton.png", (8, 8, 16, 16), "Wither Skull", True),
+        (61, "shulker_bullet", "assets/minecraft/textures/item/shulker_shell.png", (0, 0, 16, 16), "Shulker Bullet", True),
+        (62, "snowball", "assets/minecraft/textures/item/snowball.png", (0, 0, 16, 16), "Snowball", False),
+        (63, "ender_pearl", "assets/minecraft/textures/item/ender_pearl.png", (0, 0, 16, 16), "Ender Pearl", False),
+        (64, "potion", "assets/minecraft/textures/item/splash_potion.png", (0, 0, 16, 16), "Potion Projectile", False),
+        (65, "tnt", "assets/minecraft/textures/block/tnt_side.png", (0, 0, 16, 16), "Primed TNT", True),
+        (66, "end_crystal", "assets/minecraft/textures/item/end_crystal.png", (0, 0, 16, 16), "End Crystal", False),
+        (67, "item", "assets/minecraft/textures/item/diamond.png", (0, 0, 16, 16), "Dropped Item", False),
+        (68, "experience_orb", "assets/minecraft/textures/item/experience_bottle.png", (0, 0, 16, 16), "Experience Orb", False),
+        (69, "minecart", "assets/minecraft/textures/item/minecart.png", (0, 0, 16, 16), "Minecart", False),
+        (70, "boat", "assets/minecraft/textures/item/oak_boat.png", (0, 0, 16, 16), "Boat", False),
+        (71, "armor_stand", "assets/minecraft/textures/item/armor_stand.png", (0, 0, 16, 16), "Armor Stand", False),
+        (72, "falling_block", "assets/minecraft/textures/block/sand.png", (0, 0, 16, 16), "Falling Block", False)
     ]
 
     aliases = {
@@ -157,7 +174,24 @@ def build_entity_head_atlas(jar_path: str, output_dir: str) -> Tuple[str, str]:
         "minecraft:ender_dragon": 52, "ender_dragon": 52,
         "minecraft:snow_golem": 53, "snow_golem": 53,
         "hostile": 54,
-        "passive": 55
+        "passive": 55,
+        "minecraft:arrow": 56, "minecraft:spectral_arrow": 56, "arrow": 56, "spectral_arrow": 56,
+        "minecraft:trident": 57, "trident": 57,
+        "minecraft:fireball": 58, "minecraft:small_fireball": 58, "minecraft:dragon_fireball": 58, "fireball": 58,
+        "minecraft:wind_charge": 59, "minecraft:breeze_wind_charge": 59, "wind_charge": 59,
+        "minecraft:wither_skull": 60, "wither_skull": 60,
+        "minecraft:shulker_bullet": 61, "shulker_bullet": 61,
+        "minecraft:snowball": 62, "minecraft:egg": 62, "snowball": 62, "egg": 62,
+        "minecraft:ender_pearl": 63, "minecraft:eye_of_ender": 63, "ender_pearl": 63,
+        "minecraft:potion": 64, "minecraft:splash_potion": 64, "minecraft:lingering_potion": 64, "minecraft:experience_bottle": 64, "potion": 64,
+        "minecraft:tnt": 65, "tnt": 65,
+        "minecraft:end_crystal": 66, "end_crystal": 66,
+        "minecraft:item": 67, "item": 67,
+        "minecraft:experience_orb": 68, "experience_orb": 68,
+        "minecraft:minecart": 69, "minecraft:chest_minecart": 69, "minecraft:furnace_minecart": 69, "minecraft:tnt_minecart": 69, "minecraft:hopper_minecart": 69, "minecraft:spawner_minecart": 69, "minecraft:command_block_minecart": 69, "minecart": 69,
+        "minecraft:boat": 70, "minecraft:chest_boat": 70, "boat": 70,
+        "minecraft:armor_stand": 71, "armor_stand": 71,
+        "minecraft:falling_block": 72, "falling_block": 72
     }
 
     atlas_img = Image.new("RGBA", (ATLAS_SIZE, ATLAS_SIZE), (0, 0, 0, 0))
