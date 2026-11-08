@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squared Sense MC — 3D Observation Visualizer</title>
+    <link rel="stylesheet" href="css/style.css?v=3.0">
+</head>
+<body>
+    <!-- Top Telemetry HUD -->
+    <header id="top-bar">
+        <div class="left-controls">
+            <button id="btn-toggle-sidebar" class="hud-toggle-btn" title="Toggle Controls Sidebar (Hotkeys: C or Tab)">
+                <span class="btn-icon">☰</span>
+                <span class="btn-text">Controls</span>
+            </button>
+            <div class="brand">
+                <div class="brand-icon">S²</div>
+                <span class="brand-title">Squared Sense</span>
+                <div id="status-pill" class="status-pill disconnected">
+                    <span class="pulse-dot"></span>
+                    <span id="status-text">DISCONNECTED</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="telemetry-group">
+            <div class="stat-item stat-tick">
+                <span class="stat-label">TICK:</span>
+                <span id="stat-tick" class="stat-value">0</span>
+            </div>
+            <div class="stat-item stat-pos">
+                <span class="stat-label">POS:</span>
+                <span id="stat-pos" class="stat-value">0.0, 0.0, 0.0</span>
+            </div>
+            <div class="stat-item stat-facing">
+                <span class="stat-label">FACING:</span>
+                <span id="stat-cardinal" class="stat-value" style="color: var(--accent-cyan);">SOUTH</span>
+            </div>
+            <div class="stat-item stat-yaw">
+                <span class="stat-label">YAW/PITCH:</span>
+                <span id="stat-yaw-pitch" class="stat-value">0.0° / 0.0°</span>
+            </div>
+            <div class="stat-item stat-foot">
+                <span class="stat-label">FOOT:</span>
+                <span id="stat-foot-idx" class="stat-value">6</span>
+            </div>
+            <div class="stat-item stat-voxels">
+                <span class="stat-label">VOXELS:</span>
+                <span id="stat-voxels" class="stat-value" style="color: var(--accent-green);">0</span>
+            </div>
+            <div class="stat-item stat-entities">
+                <span class="stat-label">ENTITIES:</span>
+                <span id="stat-entities" class="stat-value" style="color: var(--accent-yellow);">0</span>
+            </div>
+            <div class="stat-item stat-vis">
+                <span class="stat-label">VIS:</span>
+                <span id="stat-vis" class="stat-value" style="color: var(--accent-cyan);">ON</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Floating Interactive Controls Sidebar -->
+    <aside id="sidebar">
+        <div class="sidebar-top">
+            <span class="sidebar-title">CONTROLS</span>
+            <button id="btn-close-sidebar" class="icon-btn" title="Collapse Sidebar (C)">✕</button>
+        </div>
+
+        <!-- 1. LOD Mode Selector -->
+        <div class="accordion-section open">
+            <div class="section-title accordion-header">
+                <span>LOD View Mode</span>
+                <div class="header-meta">
+                    <span id="current-lod-label" class="badge">LOD 0</span>
+                    <span class="chevron">▾</span>
+                </div>
+            </div>
+            <div class="accordion-body">
+                <div class="btn-grid">
+                    <button class="btn active" data-lod="0">LOD 0 (1m)</button>
+                    <button class="btn" data-lod="1">LOD 1 (2m)</button>
+                    <button class="btn" data-lod="2">LOD 2 (4m)</button>
+                    <button class="btn" data-lod="all">Multi-LOD Overlap</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Render Modes -->
+        <div class="accordion-section open">
+            <div class="section-title accordion-header">
+                <span>Render Mode</span>
+                <div class="header-meta">
+                    <span class="chevron">▾</span>
+                </div>
+            </div>
+            <div class="accordion-body">
+                <div class="btn-grid full">
+                    <button class="btn active" data-mode="texture">Official Textures (Atlas)</button>
+                </div>
+                <div class="btn-grid" style="margin-top: 6px;">
+                    <button class="btn" data-mode="hazard">Hazard Heatmap</button>
+                    <button class="btn" data-mode="passability">Passability</button>
+                    <button class="btn" data-mode="light">Light Level</button>
+                    <button class="btn" data-mode="hardness">Hardness</button>
+                    <button class="btn" data-mode="occlusion" style="grid-column: span 2;">Occlusion Mask (Phase 5)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Entity Overlays & Visual Helpers -->
+        <div class="accordion-section open">
+            <div class="section-title accordion-header">
+                <span>Entity & Spatial Overlays</span>
+                <div class="header-meta">
+                    <span class="chevron">▾</span>
+                </div>
+            </div>
+            <div class="accordion-body">
+                <div class="toggle-row">
+                    <span>Hide Masked / Culled (V)</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-cull-masked" checked>
+                        <span class="slider-track"></span>
+                    </label>
+                </div>
+                <div class="toggle-row">
+                    <span>Entity Wireframes</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-entities" checked>
+                        <span class="slider-track"></span>
+                    </label>
+                </div>
+                <div class="toggle-row">
+                    <span>Mob Preview Heads</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-entity-heads" checked>
+                        <span class="slider-track"></span>
+                    </label>
+                </div>
+                <div class="toggle-row">
+                    <span>Sightline Ray</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-sightline" checked>
+                        <span class="slider-track"></span>
+                    </label>
+                </div>
+                <div class="toggle-row">
+                    <span>Player Foot Anchor</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-player-box" checked>
+                        <span class="slider-track"></span>
+                    </label>
+                </div>
+                <div class="toggle-row">
+                    <span>Ground Reference Grid</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-grid" checked>
+                        <span class="slider-track"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Interactive Slice Clipping -->
+        <div class="accordion-section open">
+            <div class="section-title accordion-header">
+                <span>Slice Planes (Clip Terrain)</span>
+                <div class="header-meta">
+                    <button id="btn-reset-slices" class="btn micro-btn">Reset</button>
+                    <span class="chevron">▾</span>
+                </div>
+            </div>
+            <div class="accordion-body">
+                <div class="range-group">
+                    <div class="range-label">
+                        <span>Lateral X (Left ↔ Right)</span>
+                        <span id="val-slice-x">0 - 15</span>
+                    </div>
+                    <input type="range" id="slice-x-min" class="range-slider" min="0" max="15" value="0">
+                    <input type="range" id="slice-x-max" class="range-slider" min="0" max="15" value="15">
+                </div>
+                <div class="range-group" style="margin-top: 8px;">
+                    <div class="range-label">
+                        <span>Vertical Y (Bottom ↔ Top)</span>
+                        <span id="val-slice-y">0 - 15</span>
+                    </div>
+                    <input type="range" id="slice-y-min" class="range-slider" min="0" max="15" value="0">
+                    <input type="range" id="slice-y-max" class="range-slider" min="0" max="15" value="15">
+                </div>
+                <div class="range-group" style="margin-top: 8px;">
+                    <div class="range-label">
+                        <span>Forward Z (Behind ↔ Ahead)</span>
+                        <span id="val-slice-z">0 - 15</span>
+                    </div>
+                    <input type="range" id="slice-z-min" class="range-slider" min="0" max="15" value="0">
+                    <input type="range" id="slice-z-max" class="range-slider" min="0" max="15" value="15">
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Camera Shortcuts -->
+        <div class="accordion-section open">
+            <div class="section-title accordion-header">
+                <span>Camera Views</span>
+                <div class="header-meta">
+                    <span class="chevron">▾</span>
+                </div>
+            </div>
+            <div class="accordion-body">
+                <div class="btn-grid">
+                    <button class="btn" id="cam-reset">Perspective</button>
+                    <button class="btn" id="cam-top">Top-Down</button>
+                    <button class="btn" id="cam-side">Side View</button>
+                    <button class="btn" id="cam-align">First-Person</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Floating Quick Camera Pill (Always accessible at bottom center) -->
+    <div id="quick-cam-bar">
+        <button class="quick-cam-btn" id="quick-cam-reset" title="Perspective (P)">Perspective</button>
+        <button class="quick-cam-btn" id="quick-cam-top" title="Top-Down (T)">Top-Down</button>
+        <button class="quick-cam-btn" id="quick-cam-side" title="Side View">Side</button>
+        <button class="quick-cam-btn" id="quick-cam-align" title="First-Person (F)">First-Person</button>
+    </div>
+
+    <!-- Keyboard Shortcuts Hint Pill -->
+    <div id="shortcut-hint">
+        <span><b>C</b> Controls</span> • <span><b>T</b> Top</span> • <span><b>P</b> 3D</span> • <span><b>0-3</b> LOD</span>
+    </div>
+
+    <!-- 3D Canvas -->
+    <div id="canvas-container"></div>
+    <div id="crosshair"></div>
+    <div id="tooltip" class="hidden"></div>
+
+    <!-- Vendor Scripts (Three.js & OrbitControls) -->
+    <script src="vendor/three.min.js"></script>
+    <script src="vendor/OrbitControls.js"></script>
+    <!-- Application Logic -->
+    <script src="js/app.js?v=3.0"></script>
+</body>
+</html>
