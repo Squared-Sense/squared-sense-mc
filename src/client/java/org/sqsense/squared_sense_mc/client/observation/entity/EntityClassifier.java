@@ -50,7 +50,7 @@ public final class EntityClassifier {
      */
     public static byte getNumericTypeId(Entity entity) {
         String id = getTypeId(entity);
-        return switch (id) {
+        return (byte) switch (id) {
             case "minecraft:zombie", "minecraft:drowned", "minecraft:husk", "minecraft:zombie_villager" -> 1;
             case "minecraft:skeleton", "minecraft:stray", "minecraft:wither_skeleton", "minecraft:bogged" -> 2;
             case "minecraft:creeper" -> 3;
@@ -68,7 +68,43 @@ public final class EntityClassifier {
             case "minecraft:wolf" -> 15;
             case "minecraft:iron_golem" -> 16;
             case "minecraft:player" -> 17;
-            default -> isHostile(entity) ? (byte) 18 : (byte) 19;
+            case "minecraft:polar_bear" -> 18;
+            case "minecraft:strider" -> 19;
+            case "minecraft:horse", "minecraft:donkey", "minecraft:mule", "minecraft:skeleton_horse", "minecraft:zombie_horse" -> 20;
+            case "minecraft:llama", "minecraft:trader_llama" -> 21;
+            case "minecraft:cat", "minecraft:ocelot" -> 22;
+            case "minecraft:fox" -> 23;
+            case "minecraft:bat" -> 24;
+            case "minecraft:bee" -> 25;
+            case "minecraft:rabbit" -> 26;
+            case "minecraft:panda" -> 27;
+            case "minecraft:parrot" -> 28;
+            case "minecraft:frog", "minecraft:tadpole" -> 29;
+            case "minecraft:turtle" -> 30;
+            case "minecraft:axolotl" -> 31;
+            case "minecraft:allay" -> 32;
+            case "minecraft:camel" -> 33;
+            case "minecraft:sniffer" -> 34;
+            case "minecraft:goat" -> 35;
+            case "minecraft:armadillo" -> 36;
+            case "minecraft:dolphin" -> 37;
+            case "minecraft:squid", "minecraft:glow_squid" -> 38;
+            case "minecraft:cod", "minecraft:salmon", "minecraft:pufferfish", "minecraft:tropical_fish" -> 39;
+            case "minecraft:pillager", "minecraft:vindicator", "minecraft:evoker", "minecraft:illusioner" -> 40;
+            case "minecraft:ravager" -> 41;
+            case "minecraft:vex" -> 42;
+            case "minecraft:warden" -> 43;
+            case "minecraft:breeze" -> 44;
+            case "minecraft:ghast" -> 45;
+            case "minecraft:phantom" -> 46;
+            case "minecraft:shulker" -> 47;
+            case "minecraft:silverfish", "minecraft:endermite" -> 48;
+            case "minecraft:guardian", "minecraft:elder_guardian" -> 49;
+            case "minecraft:hoglin", "minecraft:zoglin" -> 50;
+            case "minecraft:wither" -> 51;
+            case "minecraft:ender_dragon" -> 52;
+            case "minecraft:snow_golem" -> 53;
+            default -> isHostile(entity) ? (byte) 54 : (byte) 55;
         };
     }
 }

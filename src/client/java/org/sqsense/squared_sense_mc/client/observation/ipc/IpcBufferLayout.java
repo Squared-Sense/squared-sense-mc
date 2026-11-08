@@ -15,7 +15,7 @@ public final class IpcBufferLayout {
 
     // Magic & Protocol Version
     public static final int MAGIC = 0x53515343; // "SQSC" in Little-Endian
-    public static final int PROTOCOL_VERSION = 1;
+    public static final int PROTOCOL_VERSION = 2;
 
     // Dimensions
     public static final int GRID_SIZE = 16;
@@ -72,31 +72,33 @@ public final class IpcBufferLayout {
     public static final int BLOCK_BYTES_PER_LOD = CELLS_PER_LOD * 30; // 122,880
     public static final int TOTAL_BLOCK_BYTES = BLOCK_BYTES_PER_LOD * NUM_LODS; // 368,640
 
-    // Entity Channels per LOD (9 bytes per cell * 4096 = 36,864 bytes per LOD):
+    // Entity Channels per LOD (10 bytes per cell * 4096 = 40,960 bytes per LOD):
     // - uint8 entityCount (4096 bytes)
+    // - uint8 entityTypeId (4096 bytes)
     // - float32 isHostile (16384 bytes)
     // - float32 totalHealth (16384 bytes)
     public static final int OFF_ENTITY_COUNT = 0;
-    public static final int OFF_IS_HOSTILE = 4096;
-    public static final int OFF_TOTAL_HEALTH = 20480;
+    public static final int OFF_ENTITY_TYPE_ID = 4096;
+    public static final int OFF_IS_HOSTILE = 8192;
+    public static final int OFF_TOTAL_HEALTH = 24576;
 
-    public static final int ENTITY_BYTES_PER_LOD = CELLS_PER_LOD * 9; // 36,864
-    public static final int TOTAL_ENTITY_BYTES = ENTITY_BYTES_PER_LOD * NUM_LODS; // 110,592
+    public static final int ENTITY_BYTES_PER_LOD = CELLS_PER_LOD * 10; // 40,960
+    public static final int TOTAL_ENTITY_BYTES = ENTITY_BYTES_PER_LOD * NUM_LODS; // 122,880
 
     // Auxiliary / Crosshair Targeting & Proprioception
     public static final int AUX_BYTES = 256;
 
     // Slot Size (padded to 4 KB page alignment)
-    // 368,640 + 110,592 + 256 = 479,488 -> rounded up to 483,328 (118 * 4096)
+    // 368,640 + 122,880 + 256 = 491,776 -> rounded up to 495,616 (121 * 4096)
     public static final int UNPADDED_SLOT_SIZE = TOTAL_BLOCK_BYTES + TOTAL_ENTITY_BYTES + AUX_BYTES;
-    public static final int SLOT_SIZE = ((UNPADDED_SLOT_SIZE + 4095) / 4096) * 4096; // 483,328
+    public static final int SLOT_SIZE = ((UNPADDED_SLOT_SIZE + 4095) / 4096) * 4096; // 495,616
 
     // Slot Offsets
     public static final int SLOT_0_OFFSET = HEADER_SIZE; // 4096
-    public static final int SLOT_1_OFFSET = HEADER_SIZE + SLOT_SIZE; // 4096 + 483328 = 487424
+    public static final int SLOT_1_OFFSET = HEADER_SIZE + SLOT_SIZE; // 4096 + 495616 = 499,712
 
     // Total MMF File Size
-    public static final int TOTAL_FILE_SIZE = HEADER_SIZE + SLOT_SIZE * 2; // 970,752 bytes (~948 KB)
+    public static final int TOTAL_FILE_SIZE = HEADER_SIZE + SLOT_SIZE * 2; // 995,328 bytes (~972 KB)
 
     public static int getSlotOffset(int slotIndex) {
         return HEADER_SIZE + (slotIndex & 1) * SLOT_SIZE;

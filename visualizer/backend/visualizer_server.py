@@ -82,9 +82,10 @@ class VoxelFrameExtractor:
         blocks = self.reader.read_block_tensors(active_slot, lod=lod)
         entities = self.reader.read_entity_tensors(active_slot, lod=lod)
 
-        x_local = (self.gx_grid - 8) * stride
-        y_local = (self.gy_grid - foot_index) * stride
-        z_local = (self.gz_grid - 2) * stride
+        offset = (stride - 1) * 0.5
+        x_local = (self.gx_grid - 8) * stride + offset
+        y_local = (self.gy_grid - foot_index) * stride + offset
+        z_local = (self.gz_grid - 2) * stride + offset
 
         if cardinal == "SOUTH":
             dx_grid = -x_local
@@ -110,8 +111,11 @@ class VoxelFrameExtractor:
         flow_z = blocks["fluid_flow_z"]
 
         ent_counts = entities["entity_count"]
+        ent_type_ids = entities.get("entity_type_id")
         ent_hostiles = entities["is_hostile"]
         ent_healths = entities["total_health"]
+
+        heads_dict = self.head_data.get("heads", {})
 
         mask = (block_ids != 0) | (ent_counts > 0)
         indices = np.argwhere(mask)
@@ -128,19 +132,24 @@ class VoxelFrameExtractor:
             avg_color = uv_info.get("avgColor", "#808080")
 
             ec = int(ent_counts[gx, gy, gz])
+            etid = int(ent_type_ids[gx, gy, gz]) if ent_type_ids is not None else 0
             eh = float(ent_hostiles[gx, gy, gz])
             hp = round(float(ent_healths[gx, gy, gz]), 1)
             etype = None
             if ec > 0:
-                etype = "zombie" if eh > 0.0 else "cow"
+                head_meta = heads_dict.get(str(etid))
+                if head_meta:
+                    etype = head_meta.get("type", "zombie" if eh > 0.0 else "cow")
+                else:
+                    etype = "zombie" if eh > 0.0 else "cow"
 
             voxels.append({
                 "gx": gx,
                 "gy": gy,
                 "gz": gz,
-                "dx": int(dx_grid[gx, gy, gz]),
-                "dy": int(dy_grid[gx, gy, gz]),
-                "dz": int(dz_grid[gx, gy, gz]),
+                "dx": round(float(dx_grid[gx, gy, gz]), 2),
+                "dy": round(float(dy_grid[gx, gy, gz]), 2),
+                "dz": round(float(dz_grid[gx, gy, gz]), 2),
                 "id": bid,
                 "name": bname,
                 "tileX": tile_x,
@@ -153,6 +162,7 @@ class VoxelFrameExtractor:
                 "light": round(float(lights[gx, gy, gz]), 2),
                 "flow": [round(float(flow_x[gx, gy, gz]), 2), round(float(flow_z[gx, gy, gz]), 2)],
                 "entCount": ec,
+                "entTypeId": etid,
                 "hostile": eh,
                 "health": hp,
                 "entType": etype
@@ -235,38 +245,42 @@ class VoxelFrameExtractor:
         def build_demo_lod_voxels(lod: int) -> List[Dict]:
             stride = header["strides"][lod]
             voxels = []
-            # Grid bounds for demo
-            step = 1 if lod == 0 else (2 if lod == 1 else 4)
-            for gx in range(0, layout.GRID_SIZE, step):
-                for gz in range(0, layout.GRID_SIZE, step):
+            ground_top_gy = 5 if lod == 0 else (3 if lod == 1 else 1)
+            offset = (stride - 1) * 0.5
+
+            for gx in range(0, layout.GRID_SIZE):
+                for gz in range(0, layout.GRID_SIZE):
                     # Ground layers
-                    for gy in range(0, 6, step):
-                        bid = 848 if gy < 2 else (338 if gy < 5 else 408) # stone, dirt, grass
+                    for gy in range(0, ground_top_gy + 1):
+                        bid = 885 if gy < ground_top_gy - 2 else (339 if gy < ground_top_gy else 395) # stone, dirt, grass_block
                         haz = 0.0
-                        light = 0.0 if gy < 4 else 0.8
-                        hard = 3.0 if bid == 848 else (1.5 if bid == 338 else 0.6)
+                        light = 0.0 if gy < 2 else 0.8
+                        hard = 3.0 if bid == 885 else (1.5 if bid == 339 else 0.6)
                         passability = 0.0
                         occ = 1.0
 
-                        # Water pool in corner
-                        if gy == 5 and 2 <= gx <= 5 and 7 <= gz <= 10:
-                            bid = 969 # water_still
+                        # Water pool in corner (LOD 0)
+                        if lod == 0 and gy == 5 and 2 <= gx <= 5 and 7 <= gz <= 10:
+                            bid = 974 # water
                             passability = 0.8
                             haz = 0.0
 
-                        # Lava pool in opposite corner
-                        if gy == 5 and 11 <= gx <= 14 and 11 <= gz <= 14:
-                            bid = 480 # lava_still
+                        # Lava pool in opposite corner (LOD 0)
+                        if lod == 0 and gy == 5 and 11 <= gx <= 14 and 11 <= gz <= 14:
+                            bid = 478 # lava
                             haz = 1.0
                             light = 1.0
                             passability = 0.2
 
                         uv_info = self.uv_data.get(str(bid), {})
+                        center_x = (gx - 8) * stride + offset
+                        center_y = (gy - 6) * stride + offset
+                        center_z = (gz - 2) * stride + offset
                         voxels.append({
                             "gx": gx, "gy": gy, "gz": gz,
-                            "dx": -(gx - 8) * stride,
-                            "dy": (gy - 6) * stride,
-                            "dz": (gz - 2) * stride,
+                            "dx": round(float(-center_x), 2),
+                            "dy": round(float(center_y), 2),
+                            "dz": round(float(center_z), 2),
                             "id": bid,
                             "name": uv_info.get("name", f"block:{bid}"),
                             "tileX": uv_info.get("tileX", 0),
@@ -278,57 +292,58 @@ class VoxelFrameExtractor:
                             "entCount": 0, "hostile": 0.0, "health": 0.0
                         })
 
-            # Tree (trunk + leaves)
-            for ty in range(6, 10):
-                tgx, tgz = 10, 5
-                bid = 580 # oak_log
-                uv_info = self.uv_data.get(str(bid), {})
-                voxels.append({
-                    "gx": tgx, "gy": ty, "gz": tgz,
-                    "dx": -(tgx - 8) * stride, "dy": (ty - 6) * stride, "dz": (tgz - 2) * stride,
-                    "id": bid, "name": uv_info.get("name", "minecraft:oak_log"),
-                    "tileX": uv_info.get("tileX", 0), "tileY": uv_info.get("tileY", 0),
-                    "avgColor": uv_info.get("avgColor", "#675231"),
-                    "occ": 1.0, "pass": 0.0, "haz": 0.0, "hard": 2.0, "light": 0.8,
-                    "flow": [0.0, 0.0], "entCount": 0, "hostile": 0.0, "health": 0.0
-                })
-            # Canopy
-            for lx in range(8, 13):
-                for lz in range(3, 8):
-                    for ly in range(9, 12):
-                        if lx == 10 and lz == 5 and ly < 11:
-                            continue
-                        bid = 579 # oak_leaves
-                        uv_info = self.uv_data.get(str(bid), {})
-                        voxels.append({
-                            "gx": lx, "gy": ly, "gz": lz,
-                            "dx": -(lx - 8) * stride, "dy": (ly - 6) * stride, "dz": (lz - 2) * stride,
-                            "id": bid, "name": uv_info.get("name", "minecraft:oak_leaves"),
-                            "tileX": uv_info.get("tileX", 0), "tileY": uv_info.get("tileY", 0),
-                            "avgColor": uv_info.get("avgColor", "#32591e"),
-                            "occ": 0.6, "pass": 0.5, "haz": 0.0, "hard": 0.2, "light": 0.9,
-                            "flow": [0.0, 0.0], "entCount": 0, "hostile": 0.0, "health": 0.0
-                        })
+            # Tree & Mobs (rendered in LOD 0 demo)
+            if lod == 0:
+                for ty in range(6, 10):
+                    tgx, tgz = 10, 5
+                    bid = 607 # oak_log
+                    uv_info = self.uv_data.get(str(bid), {})
+                    voxels.append({
+                        "gx": tgx, "gy": ty, "gz": tgz,
+                        "dx": -(tgx - 8), "dy": (ty - 6), "dz": (tgz - 2),
+                        "id": bid, "name": uv_info.get("name", "minecraft:oak_log"),
+                        "tileX": uv_info.get("tileX", 0), "tileY": uv_info.get("tileY", 0),
+                        "avgColor": uv_info.get("avgColor", "#675231"),
+                        "occ": 1.0, "pass": 0.0, "haz": 0.0, "hard": 2.0, "light": 0.8,
+                        "flow": [0.0, 0.0], "entCount": 0, "hostile": 0.0, "health": 0.0
+                    })
+                # Canopy
+                for lx in range(8, 13):
+                    for lz in range(3, 8):
+                        for ly in range(9, 12):
+                            if lx == 10 and lz == 5 and ly < 11:
+                                continue
+                            bid = 606 # oak_leaves
+                            uv_info = self.uv_data.get(str(bid), {})
+                            voxels.append({
+                                "gx": lx, "gy": ly, "gz": lz,
+                                "dx": -(lx - 8), "dy": (ly - 6), "dz": (lz - 2),
+                                "id": bid, "name": uv_info.get("name", "minecraft:oak_leaves"),
+                                "tileX": uv_info.get("tileX", 0), "tileY": uv_info.get("tileY", 0),
+                                "avgColor": uv_info.get("avgColor", "#32591e"),
+                                "occ": 0.6, "pass": 0.5, "haz": 0.0, "hard": 0.2, "light": 0.9,
+                                "flow": [0.0, 0.0], "entCount": 0, "hostile": 0.0, "health": 0.0
+                            })
 
-            # Demo Mobs: Zombie, Skeleton, Creeper, Cow, Pig
-            demo_mobs = [
-                (8, 6, 9, "zombie", 1.0, 20.0),
-                (3, 6, 8, "skeleton", 1.0, 20.0),
-                (12, 6, 7, "creeper", 1.0, 20.0),
-                (5, 6, 4, "cow", 0.0, 10.0),
-                (11, 6, 3, "pig", 0.0, 10.0)
-            ]
-            for mgx, mgy, mgz, mtype, mhostile, mhp in demo_mobs:
-                voxels.append({
-                    "gx": mgx, "gy": mgy, "gz": mgz,
-                    "dx": -(mgx - 8) * stride, "dy": (mgy - 6) * stride, "dz": (mgz - 2) * stride,
-                    "id": 0, "name": f"entity:{mtype}",
-                    "tileX": 0, "tileY": 0, "avgColor": "#000000",
-                    "occ": 0.0, "pass": 1.0, "haz": 0.0, "hard": 0.0, "light": 0.8,
-                    "flow": [0.0, 0.0],
-                    "entCount": 1, "hostile": mhostile, "health": mhp,
-                    "entType": mtype
-                })
+                # Demo Mobs: Zombie (1), Skeleton (2), Creeper (3), Cow (10), Pig (11)
+                demo_mobs = [
+                    (8, 6, 9, "zombie", 1, 1.0, 20.0),
+                    (3, 6, 8, "skeleton", 2, 1.0, 20.0),
+                    (12, 6, 7, "creeper", 3, 1.0, 20.0),
+                    (5, 6, 4, "cow", 10, 0.0, 10.0),
+                    (11, 6, 3, "pig", 11, 0.0, 10.0)
+                ]
+                for mgx, mgy, mgz, mtype, metid, mhostile, mhp in demo_mobs:
+                    voxels.append({
+                        "gx": mgx, "gy": mgy, "gz": mgz,
+                        "dx": -(mgx - 8), "dy": (mgy - 6), "dz": (mgz - 2),
+                        "id": 0, "name": f"entity:{mtype}",
+                        "tileX": 0, "tileY": 0, "avgColor": "#000000",
+                        "occ": 0.0, "pass": 1.0, "haz": 0.0, "hard": 0.0, "light": 0.8,
+                        "flow": [0.0, 0.0],
+                        "entCount": 1, "entTypeId": metid, "hostile": mhostile, "health": mhp,
+                        "entType": mtype
+                    })
 
             return voxels
 
@@ -407,28 +422,31 @@ class VisualizerServer:
                 time.sleep(0.1)
                 continue
 
-            if not self.reader.is_open():
-                if not self.reader.open():
-                    time.sleep(1.0)
-                    continue
-                print(f"[VisualizerServer] Connected to MMF IPC at {self.reader.shm_path}")
+            try:
+                if not self.reader.is_open():
+                    if not self.reader.open():
+                        time.sleep(1.0)
+                        continue
+                    print(f"[VisualizerServer] Connected to MMF IPC at {self.reader.shm_path}")
 
-            header = self.reader.read_header()
-            if header:
-                seq = header["sequenceId"]
-                if seq != self.latest_seq:
-                    self.latest_seq = seq
-                    slot = header["activeSlot"]
-                    frame = self.extractor.build_frame(slot, self.active_lod_mode)
-                    if frame:
-                        self.latest_frame = frame
-                        if HAS_WEBSOCKETS and self.connected_ws and hasattr(self, "async_loop"):
-                            msg = json.dumps(frame)
-                            for ws in list(self.connected_ws):
-                                try:
-                                    asyncio.run_coroutine_threadsafe(ws.send(msg), self.async_loop)
-                                except Exception:
-                                    pass
+                header = self.reader.read_header()
+                if header:
+                    seq = header["sequenceId"]
+                    if seq != self.latest_seq:
+                        self.latest_seq = seq
+                        slot = header["activeSlot"]
+                        frame = self.extractor.build_frame(slot, self.active_lod_mode)
+                        if frame:
+                            self.latest_frame = frame
+                            if HAS_WEBSOCKETS and self.connected_ws and hasattr(self, "async_loop"):
+                                msg = json.dumps(frame)
+                                for ws in list(self.connected_ws):
+                                    try:
+                                        asyncio.run_coroutine_threadsafe(ws.send(msg), self.async_loop)
+                                    except Exception:
+                                        pass
+            except Exception as poll_err:
+                time.sleep(0.05)
             time.sleep(0.02)  # 50 Hz poll
 
     async def _run_websocket_server(self):

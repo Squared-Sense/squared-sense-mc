@@ -36,6 +36,7 @@ public class BinaryObservationWriter {
     private final PhysicalPropertyExtractor.Accumulator accumulator = new PhysicalPropertyExtractor.Accumulator();
 
     private final int[] entityCounts = new int[IpcBufferLayout.CELLS_PER_LOD];
+    private final byte[] entityTypeIds = new byte[IpcBufferLayout.CELLS_PER_LOD];
     private final float[] entityHostile = new float[IpcBufferLayout.CELLS_PER_LOD];
     private final float[] entityHealth = new float[IpcBufferLayout.CELLS_PER_LOD];
 
@@ -174,8 +175,8 @@ public class BinaryObservationWriter {
                     buffer.putFloat(lodBase + IpcBufferLayout.OFF_HAZARD + cellIdx * 4, props.hazard());
                     buffer.putFloat(lodBase + IpcBufferLayout.OFF_HARDNESS + cellIdx * 4, props.hardness());
                     buffer.putFloat(lodBase + IpcBufferLayout.OFF_LIGHT + cellIdx * 4, props.lightLevel());
-                    buffer.putFloat(lodBase + IpcBufferLayout.OFF_FLUID_X + cellIdx * 4, props.fluidFlow()[0]);
-                    buffer.putFloat(lodBase + IpcBufferLayout.OFF_FLUID_Z + cellIdx * 4, props.fluidFlow()[1]);
+                    buffer.putFloat(lodBase + IpcBufferLayout.OFF_FLUID_X + cellIdx * 4, props.flowX());
+                    buffer.putFloat(lodBase + IpcBufferLayout.OFF_FLUID_Z + cellIdx * 4, props.flowZ());
                 }
             }
         }
@@ -196,6 +197,7 @@ public class BinaryObservationWriter {
         final int playerZ = playerPos.getZ();
 
         Arrays.fill(entityCounts, 0);
+        Arrays.fill(entityTypeIds, (byte) 0);
         Arrays.fill(entityHostile, 0.0f);
         Arrays.fill(entityHealth, 0.0f);
 
@@ -217,6 +219,11 @@ public class BinaryObservationWriter {
             if (transform.isInGrid(gx, gy, gz)) {
                 int cellIdx = (gx * size + gy) * size + gz;
                 entityCounts[cellIdx]++;
+                byte typeId = EntityClassifier.getNumericTypeId(entity);
+                // Retain existing or prioritize hostile entity type ID if cell has multiple entities
+                if (entityTypeIds[cellIdx] == 0 || (EntityClassifier.isHostile(entity) && entityHostile[cellIdx] == 0.0f)) {
+                    entityTypeIds[cellIdx] = typeId;
+                }
                 if (EntityClassifier.isHostile(entity)) {
                     entityHostile[cellIdx] = 1.0f;
                 }
@@ -227,6 +234,7 @@ public class BinaryObservationWriter {
         int lodBase = IpcBufferLayout.getLodEntityOffset(slotOffset, lod);
         for (int i = 0; i < IpcBufferLayout.CELLS_PER_LOD; i++) {
             buffer.put(lodBase + IpcBufferLayout.OFF_ENTITY_COUNT + i, (byte) Math.min(255, entityCounts[i]));
+            buffer.put(lodBase + IpcBufferLayout.OFF_ENTITY_TYPE_ID + i, entityTypeIds[i]);
             buffer.putFloat(lodBase + IpcBufferLayout.OFF_IS_HOSTILE + i * 4, entityHostile[i]);
             buffer.putFloat(lodBase + IpcBufferLayout.OFF_TOTAL_HEALTH + i * 4, entityHealth[i]);
         }

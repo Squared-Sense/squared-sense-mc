@@ -16,7 +16,7 @@
     'use strict';
 
     // --- Configuration & Constants ---
-    const ATLAS_TILES_PER_ROW = 32;
+    const ATLAS_TILES_PER_ROW = 64;
     const HEAD_TILES_PER_ROW = 8;
     const MAX_INSTANCES = 4096;
     const GRID_SIZE = 16;
@@ -241,7 +241,7 @@
                 `#include <uv_vertex>
                  // Clamp face UV slightly inward to avoid sub-pixel bleeding
                  vec2 clampedUv = clamp(uv, 0.005, 0.995);
-                 vAtlasUV = instanceUVOffset + clampedUv * (1.0 / 32.0);`
+                 vAtlasUV = instanceUVOffset + clampedUv * (1.0 / 64.0);`
             );
 
             // Fragment Shader: Sample atlas when uUseAtlas > 0.5, else use instanceColor
@@ -331,8 +331,8 @@
         meshLOD0.count = 0;
         scene.add(meshLOD0);
 
-        // --- LOD 1 InstancedMesh (2x2x2 cubes) ---
-        const geoLOD1 = new THREE.BoxGeometry(2.0, 2.0, 2.0);
+        // --- LOD 1 InstancedMesh (Unit geometry scaled by stride 2.0) ---
+        const geoLOD1 = new THREE.BoxGeometry(1.0, 1.0, 1.0);
         const uvOffsets1 = new Float32Array(MAX_INSTANCES * 2);
         const uvAttr1 = new THREE.InstancedBufferAttribute(uvOffsets1, 2);
         uvAttr1.setUsage(THREE.DynamicDrawUsage);
@@ -345,8 +345,8 @@
         meshLOD1.visible = false;
         scene.add(meshLOD1);
 
-        // --- LOD 2 InstancedMesh Solid (4x4x4 cubes) ---
-        const geoLOD2 = new THREE.BoxGeometry(4.0, 4.0, 4.0);
+        // --- LOD 2 InstancedMesh Solid (Unit geometry scaled by stride 4.0) ---
+        const geoLOD2 = new THREE.BoxGeometry(1.0, 1.0, 1.0);
         const uvOffsets2 = new Float32Array(MAX_INSTANCES * 2);
         const uvAttr2 = new THREE.InstancedBufferAttribute(uvOffsets2, 2);
         uvAttr2.setUsage(THREE.DynamicDrawUsage);
@@ -360,7 +360,7 @@
         scene.add(meshLOD2);
 
         // --- LOD 2 InstancedMesh Wireframe Bounds (For Multi-LOD Overlap View) ---
-        const geoLOD2Wire = new THREE.BoxGeometry(4.0, 4.0, 4.0);
+        const geoLOD2Wire = new THREE.BoxGeometry(1.0, 1.0, 1.0);
         const matLOD2Wire = new THREE.MeshBasicMaterial({
             wireframe: true,
             color: 0x00d4ff,
@@ -373,7 +373,7 @@
         scene.add(meshLOD2Wire);
 
         // --- Entity Wireframe Boxes (Hostile = Pulsing Red, Passive = Bright Green) ---
-        const geoEnt = new THREE.BoxGeometry(1.04, 1.04, 1.04);
+        const geoEnt = new THREE.BoxGeometry(1.0, 1.0, 1.0);
         const matEnt = new THREE.MeshBasicMaterial({
             wireframe: true,
             transparent: true,
@@ -385,7 +385,7 @@
         scene.add(meshEntities);
 
         // --- Entity 3D Mob Preview Heads (Front face = official mob face) ---
-        const geoHead = new THREE.BoxGeometry(0.55, 0.55, 0.55);
+        const geoHead = new THREE.BoxGeometry(1.0, 1.0, 1.0);
         const headUvOffsets = new Float32Array(MAX_INSTANCES * 2);
         const headUvAttr = new THREE.InstancedBufferAttribute(headUvOffsets, 2);
         headUvAttr.setUsage(THREE.DynamicDrawUsage);
@@ -414,7 +414,7 @@
 
     async function loadEntityHeadMetadata() {
         try {
-            const resp = await fetch('/assets/entity_heads.json');
+            const resp = await fetch('/assets/entity_heads.json?v=2.7');
             if (resp.ok) {
                 const data = await resp.json();
                 entityHeadMetadata = data.heads || {};
@@ -429,7 +429,7 @@
     function loadAtlasTexture() {
         const loader = new THREE.TextureLoader();
         atlasTexture = loader.load(
-            '/assets/texture_atlas.png',
+            '/assets/texture_atlas.png?v=2.7',
             (tex) => {
                 tex.magFilter = THREE.NearestFilter;
                 tex.minFilter = THREE.NearestFilter;
@@ -455,7 +455,7 @@
     function loadEntityHeadTexture() {
         const loader = new THREE.TextureLoader();
         entityHeadTexture = loader.load(
-            '/assets/entity_heads.png',
+            '/assets/entity_heads.png?v=2.7',
             (tex) => {
                 tex.magFilter = THREE.NearestFilter;
                 tex.minFilter = THREE.NearestFilter;
@@ -646,7 +646,7 @@
             );
             mesh.setMatrixAt(count, tempMatrix);
 
-            // Set UV Tile Offset (Atlas Tile: tileX / 32, 1.0 - (tileY + 1) / 32)
+            // Set UV Tile Offset (Atlas Tile: tileX / 64, 1.0 - (tileY + 1) / 64)
             if (uvArray) {
                 const u0 = (vox.tileX || 0) / ATLAS_TILES_PER_ROW;
                 const v0 = 1.0 - ((vox.tileY || 0) + 1.0) / ATLAS_TILES_PER_ROW;
@@ -820,7 +820,7 @@
 
             // Determine UV tile from entity type
             let mobKey = (vox.entType || (vox.hostile > 0 ? 'zombie' : 'cow')).toLowerCase();
-            let mobId = entityHeadAliases[mobKey] || entityHeadAliases[vox.name] || (vox.hostile > 0 ? 1 : 10);
+            let mobId = vox.entTypeId || entityHeadAliases[mobKey] || entityHeadAliases[vox.name] || (vox.hostile > 0 ? 1 : 10);
             let headInfo = entityHeadMetadata[String(mobId)] || entityHeadMetadata['1'];
 
             if (headUvArray && headInfo) {
@@ -985,26 +985,29 @@
             updateSliceValues();
         });
 
-        // Camera View Shortcut Buttons
-        document.getElementById('cam-reset').addEventListener('click', () => {
+        // Camera View Shortcut Functions
+        function setCameraPerspective() {
             camera.position.set(16, 20, 24);
             controls.target.set(0, 3, 0);
             controls.update();
-        });
+            updateCameraPills('reset');
+        }
 
-        document.getElementById('cam-top').addEventListener('click', () => {
+        function setCameraTopDown() {
             camera.position.set(0, 38, 0.01);
             controls.target.set(0, 0, 0);
             controls.update();
-        });
+            updateCameraPills('top');
+        }
 
-        document.getElementById('cam-side').addEventListener('click', () => {
+        function setCameraSide() {
             camera.position.set(34, 4, 0);
             controls.target.set(0, 2, 0);
             controls.update();
-        });
+            updateCameraPills('side');
+        }
 
-        document.getElementById('cam-align').addEventListener('click', () => {
+        function setCameraFirstPerson() {
             if (!latestFrameData || !latestFrameData.header) return;
             const yaw = latestFrameData.header.cameraYaw ?? 0;
             const pitch = latestFrameData.header.cameraPitch ?? 0;
@@ -1015,11 +1018,90 @@
             const vy = -Math.sin(radPitch);
             const vz = Math.cos(radYaw) * Math.cos(radPitch);
 
-            // Third-person chase camera 5 meters behind player eyes
             const dist = 5.0;
             camera.position.set(-vx * dist, 1.62 - vy * dist + 0.6, -vz * dist);
             controls.target.set(vx * 10.0, 1.62 + vy * 10.0, vz * 10.0);
             controls.update();
+            updateCameraPills('align');
+        }
+
+        function updateCameraPills(activeId) {
+            document.querySelectorAll('.quick-cam-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.id === `quick-cam-${activeId}`);
+            });
+        }
+
+        // Sidebar & Quick Camera Event Listeners
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('btn-toggle-sidebar');
+        const closeBtn = document.getElementById('btn-close-sidebar');
+
+        function toggleSidebar() {
+            if (!sidebar) return;
+            sidebar.classList.toggle('collapsed');
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            if (toggleBtn) {
+                toggleBtn.classList.toggle('active', !isCollapsed);
+            }
+        }
+
+        if (toggleBtn) toggleBtn.addEventListener('click', toggleSidebar);
+        if (closeBtn) closeBtn.addEventListener('click', toggleSidebar);
+
+        // Accordion Sections Toggle
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+                const section = header.closest('.accordion-section');
+                if (section) {
+                    section.classList.toggle('collapsed');
+                }
+            });
+        });
+
+        // Sidebar Camera Buttons
+        document.getElementById('cam-reset')?.addEventListener('click', setCameraPerspective);
+        document.getElementById('cam-top')?.addEventListener('click', setCameraTopDown);
+        document.getElementById('cam-side')?.addEventListener('click', setCameraSide);
+        document.getElementById('cam-align')?.addEventListener('click', setCameraFirstPerson);
+
+        // Quick Bottom Camera Pill Buttons
+        document.getElementById('quick-cam-reset')?.addEventListener('click', setCameraPerspective);
+        document.getElementById('quick-cam-top')?.addEventListener('click', setCameraTopDown);
+        document.getElementById('quick-cam-side')?.addEventListener('click', setCameraSide);
+        document.getElementById('quick-cam-align')?.addEventListener('click', setCameraFirstPerson);
+
+        // Global Keyboard Shortcuts
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            const key = e.key.toLowerCase();
+            if (key === 'c' || e.key === 'Tab') {
+                e.preventDefault();
+                toggleSidebar();
+            } else if (key === 't') {
+                setCameraTopDown();
+            } else if (key === 'p') {
+                setCameraPerspective();
+            } else if (key === 'f') {
+                setCameraFirstPerson();
+            } else if (key === 'g') {
+                const toggleGrid = document.getElementById('toggle-grid');
+                if (toggleGrid) {
+                    toggleGrid.checked = !toggleGrid.checked;
+                    toggleGrid.dispatchEvent(new Event('change'));
+                }
+            } else if (key === 'e') {
+                const toggleEntities = document.getElementById('toggle-entities');
+                if (toggleEntities) {
+                    toggleEntities.checked = !toggleEntities.checked;
+                    toggleEntities.dispatchEvent(new Event('change'));
+                }
+            } else if (['0', '1', '2', '3'].includes(key)) {
+                const targetLod = key === '3' ? 'all' : key;
+                const btn = document.querySelector(`[data-lod="${targetLod}"]`);
+                if (btn) btn.click();
+            }
         });
 
         // Mouse Hover Tooltip Raycasting
@@ -1094,7 +1176,7 @@
         if (vox.entCount > 0) {
             const isHostile = vox.hostile > 0;
             const mobKey = (vox.entType || (isHostile ? 'zombie' : 'cow')).toLowerCase();
-            const mobId = entityHeadAliases[mobKey] || (isHostile ? 1 : 10);
+            const mobId = vox.entTypeId || entityHeadAliases[mobKey] || (isHostile ? 1 : 10);
             const headInfo = entityHeadMetadata[String(mobId)];
             const mobDisplayName = headInfo ? headInfo.name : (isHostile ? 'Hostile Mob' : 'Passive Animal');
 

@@ -12,8 +12,8 @@ from typing import Dict, List, Optional, Tuple
 from PIL import Image
 
 TILE_SIZE = 16
-TILES_PER_ROW = 32  # 32x32 tiles = 1024 total slots
-ATLAS_SIZE = TILE_SIZE * TILES_PER_ROW  # 512x512 pixels
+TILES_PER_ROW = 64  # 64x64 tiles = 4096 total slots (1024x1024 atlas)
+ATLAS_SIZE = TILE_SIZE * TILES_PER_ROW  # 1024x1024 pixels
 
 
 def find_client_jar(custom_path: Optional[str] = None) -> Optional[str]:
@@ -42,11 +42,15 @@ def find_client_jar(custom_path: Optional[str] = None) -> Optional[str]:
 
 
 def find_vocab_json(custom_path: Optional[str] = None) -> Optional[str]:
-    """Locates observations/block_vocab.json."""
+    """Locates block_vocab.json in assets, observations, or system temp."""
+    temp_dir = os.environ.get("TEMP", os.environ.get("TMP", "/tmp"))
     candidates = [
         custom_path,
+        os.path.join(os.path.dirname(__file__), "assets", "block_vocab.json"),
+        os.path.join(temp_dir, "squared_sense_mc_vocab.json"),
         os.path.join(os.path.dirname(__file__), "..", "..", "observations", "block_vocab.json"),
         os.path.join(os.path.dirname(__file__), "..", "..", "run", "observations", "block_vocab.json"),
+        "visualizer/backend/assets/block_vocab.json",
         "observations/block_vocab.json"
     ]
     for c in candidates:
@@ -57,12 +61,12 @@ def find_vocab_json(custom_path: Optional[str] = None) -> Optional[str]:
 
 def get_preferred_texture_name(block_name: str, available_textures: Dict[str, str]) -> Optional[str]:
     """
-    Finds the best matching texture file in available_textures for a block name.
+    Finds the best matching texture file in available_textures for a canonical block name.
     Example: 'minecraft:grass_block' -> 'grass_block_top.png'
     """
     path = block_name.split(":")[-1]
 
-    # Preference order for block faces
+    # 1. Direct candidate matches
     candidates = [
         f"{path}.png",
         f"{path}_top.png",
@@ -80,7 +84,75 @@ def get_preferred_texture_name(block_name: str, available_textures: Dict[str, st
         if c in available_textures:
             return available_textures[c]
 
-    # Prefix / substring search fallback
+    # 2. Derivative block suffixes (slabs, stairs, fences, gates, walls, buttons, signs)
+    suffixes = [
+        "_wall_hanging_sign", "_hanging_sign", "_wall_sign", "_sign",
+        "_fence_gate", "_fence", "_pressure_plate", "_button",
+        "_stairs", "_slab", "_wall"
+    ]
+    for s in suffixes:
+        if path.endswith(s):
+            base = path[:-len(s)]
+            for c in [f"{base}.png", f"{base}_planks.png", f"{base}s.png", f"{base}_top.png", f"{base}_side.png"]:
+                if c in available_textures:
+                    return available_textures[c]
+
+    # 3. Wood / Hyphae bark -> log
+    if path.endswith("_wood"):
+        base = path[:-5]
+        for c in [f"{base}_log.png", f"{base}_log_side.png", f"{base}_top.png"]:
+            if c in available_textures:
+                return available_textures[c]
+    if path.endswith("_hyphae"):
+        base = path[:-7]
+        for c in [f"{base}_stem.png", f"{base}_stem_side.png", f"{base}_top.png"]:
+            if c in available_textures:
+                return available_textures[c]
+
+    # 4. Potted flowers / saplings
+    if path.startswith("potted_"):
+        base = path[7:]
+        for c in [f"{base}.png", f"{base}_top.png"]:
+            if c in available_textures:
+                return available_textures[c]
+
+    # 5. Wall torches / heads / banners
+    if "_wall_" in path:
+        base = path.replace("_wall_", "_")
+        if f"{base}.png" in available_textures:
+            return available_textures[f"{base}.png"]
+    if path.startswith("wall_"):
+        base = path[5:]
+        if f"{base}.png" in available_textures:
+            return available_textures[f"{base}.png"]
+
+    # 6. Wool derivatives (carpet, bed, banner)
+    if any(path.endswith(w) for w in ["_carpet", "_bed", "_banner", "_wall_banner"]):
+        color = path.split("_")[0]
+        if f"{color}_wool.png" in available_textures:
+            return available_textures[f"{color}_wool.png"]
+
+    # 7. Cake / candle cakes
+    if "candle_cake" in path:
+        if "cake_top.png" in available_textures:
+            return available_textures["cake_top.png"]
+
+    # 8. Infested blocks (silverfish blocks)
+    if path.startswith("infested_"):
+        base = path[9:]
+        if f"{base}.png" in available_textures:
+            return available_textures[f"{base}.png"]
+
+    # 9. Special liquids & blocks
+    if path == "bubble_column":
+        if "water_still.png" in available_textures:
+            return available_textures["water_still.png"]
+    if path == "dried_kelp_block":
+        for c in ["dried_kelp_top.png", "dried_kelp_side.png", "dried_kelp_bottom.png"]:
+            if c in available_textures:
+                return available_textures[c]
+
+    # 10. Prefix / substring search fallback
     for name, full_path in available_textures.items():
         if name.startswith(path):
             return full_path
@@ -201,8 +273,7 @@ def build_texture_atlas(
         "avgColor": "#1e1e23"
     }
 
-    # 4. Map and paste each block texture
-    next_slot = 2
+    # 4. Map and paste each block texture (1:1 with canonical token_id)
     matched_count = 0
     fallback_color_count = 0
 
@@ -213,12 +284,12 @@ def build_texture_atlas(
         if token_id < 2:
             continue
 
-        if next_slot >= TILES_PER_ROW * TILES_PER_ROW:
-            print(f"[TextureExtractor] Warning: Atlas slot limit ({TILES_PER_ROW * TILES_PER_ROW}) reached!")
+        if token_id >= TILES_PER_ROW * TILES_PER_ROW:
+            print(f"[TextureExtractor] Warning: Atlas slot limit ({TILES_PER_ROW * TILES_PER_ROW}) reached for token {token_id}!")
             break
 
-        tile_x = next_slot % TILES_PER_ROW
-        tile_y = next_slot // TILES_PER_ROW
+        tile_x = token_id % TILES_PER_ROW
+        tile_y = token_id // TILES_PER_ROW
         pixel_x = tile_x * TILE_SIZE
         pixel_y = tile_y * TILE_SIZE
 
@@ -249,7 +320,7 @@ def build_texture_atlas(
             h = int(digest[:6], 16)
             r = max(50, min(230, (h >> 16) & 0xFF))
             g = max(50, min(230, (h >> 8) & 0xFF))
-            b = max(50, min(230, b & 0xFF))
+            b = max(50, min(230, h & 0xFF))
             tile_img = Image.new("RGBA", (TILE_SIZE, TILE_SIZE), (r, g, b, 255))
 
         # Calculate average color
@@ -286,8 +357,6 @@ def build_texture_atlas(
             "v1": round(v1, 6),
             "avgColor": avg_color
         }
-
-        next_slot += 1
 
     # 5. Save Atlas PNG and UV JSON
     atlas_img.save(atlas_png_path, "PNG")
