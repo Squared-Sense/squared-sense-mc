@@ -132,6 +132,9 @@ public class SharedMemoryChannel {
         sequenceCounter++;
 
         // 1. Update pose and timestamp fields in header
+        int flags = (open ? IpcBufferLayout.FLAG_STREAM_ACTIVE : 0) |
+                    (ObservationConfig.visibilityFilterEnabled ? IpcBufferLayout.FLAG_VISIBILITY_FILTER : 0);
+        buffer.putInt(IpcBufferLayout.OFF_FLAGS, flags);
         buffer.putLong(IpcBufferLayout.OFF_GAME_TICK, gameTick);
         buffer.putLong(IpcBufferLayout.OFF_TIMESTAMP_NANOS, System.nanoTime());
         buffer.putDouble(IpcBufferLayout.OFF_PLAYER_X, px);

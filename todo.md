@@ -104,7 +104,8 @@
 
 12. **Exposed-Face Surface Shell Filter (Cull Solid Underworld):**
 * For each non-air block queried, check if any of its 6 direct neighbors is air or transparent.
-* If a block is completely surrounded by opaque blocks, set its visibility channel to $0.0$ and assign it the `MASKED` token so the agent does not observe underground caves through solid stone.
+* If a block is completely surrounded by opaque blocks, set its visibility channel to $0.0$ and assign it the `MASKED` token (`special:masked`, ID 1) so the agent does not observe underground caves through solid stone.
+* Fully toggleable via in-game command (`/observe visibility [on|off|toggle]`), MMF header flag `FLAG_VISIBILITY_FILTER`, and 3D visualizer UI toggle / Occlusion Heatmap Mode.
 
 
 

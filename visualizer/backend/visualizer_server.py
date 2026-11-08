@@ -109,6 +109,7 @@ class VoxelFrameExtractor:
         lights = blocks["light_level"]
         flow_x = blocks["fluid_flow_x"]
         flow_z = blocks["fluid_flow_z"]
+        visibilities = blocks.get("visibility")
 
         ent_counts = entities["entity_count"]
         ent_type_ids = entities.get("entity_type_id")
@@ -135,6 +136,7 @@ class VoxelFrameExtractor:
             etid = int(ent_type_ids[gx, gy, gz]) if ent_type_ids is not None else 0
             eh = float(ent_hostiles[gx, gy, gz])
             hp = round(float(ent_healths[gx, gy, gz]), 1)
+            vis = round(float(visibilities[gx, gy, gz]), 2) if visibilities is not None else 1.0
             etype = None
             if ec > 0:
                 head_meta = heads_dict.get(str(etid))
@@ -161,6 +163,7 @@ class VoxelFrameExtractor:
                 "hard": round(float(hardnesses[gx, gy, gz]), 1),
                 "light": round(float(lights[gx, gy, gz]), 2),
                 "flow": [round(float(flow_x[gx, gy, gz]), 2), round(float(flow_z[gx, gy, gz]), 2)],
+                "vis": vis,
                 "entCount": ec,
                 "entTypeId": etid,
                 "hostile": eh,
@@ -187,6 +190,7 @@ class VoxelFrameExtractor:
             "footIndex": header["footIndex"],
             "strides": header["strides"],
             "vocabSize": header["vocabSize"],
+            "visibilityFilter": header.get("visibilityFilter", True),
             "lodMode": str(lod_mode)
         }
 
@@ -239,6 +243,7 @@ class VoxelFrameExtractor:
             "footIndex": 6,
             "strides": [1, 2, 4],
             "vocabSize": 1014,
+            "visibilityFilter": True,
             "lodMode": str(lod_mode)
         }
 
@@ -289,6 +294,7 @@ class VoxelFrameExtractor:
                             "occ": occ, "pass": passability, "haz": haz,
                             "hard": hard, "light": light,
                             "flow": [0.0, 0.0],
+                            "vis": 1.0,
                             "entCount": 0, "hostile": 0.0, "health": 0.0
                         })
 

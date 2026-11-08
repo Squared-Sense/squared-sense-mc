@@ -23,12 +23,13 @@
 
     // --- State Variables ---
     let currentLodMode = '0'; // '0', '1', '2', or 'all'
-    let currentRenderMode = 'texture'; // 'texture', 'hazard', 'passability', 'light', 'hardness'
+    let currentRenderMode = 'texture'; // 'texture', 'hazard', 'passability', 'light', 'hardness', 'occlusion'
     let showEntities = true;
     let showEntityHeads = true;
     let showSightline = true;
     let showPlayerBox = true;
     let showGrid = true;
+    let hideMaskedVoxels = true; // Phase 5: Hide culled underworld voxels in normal modes
 
     // Slice clipping range (0..15 in grid coordinates)
     const slices = {
@@ -414,7 +415,7 @@
 
     async function loadEntityHeadMetadata() {
         try {
-            const resp = await fetch('/assets/entity_heads.json?v=2.8');
+            const resp = await fetch('/assets/entity_heads.json?v=3.0');
             if (resp.ok) {
                 const data = await resp.json();
                 entityHeadMetadata = data.heads || {};
@@ -429,7 +430,7 @@
     function loadAtlasTexture() {
         const loader = new THREE.TextureLoader();
         atlasTexture = loader.load(
-            '/assets/texture_atlas.png?v=2.8',
+            '/assets/texture_atlas.png?v=3.0',
             (tex) => {
                 tex.magFilter = THREE.NearestFilter;
                 tex.minFilter = THREE.NearestFilter;
@@ -455,7 +456,7 @@
     function loadEntityHeadTexture() {
         const loader = new THREE.TextureLoader();
         entityHeadTexture = loader.load(
-            '/assets/entity_heads.png?v=2.8',
+            '/assets/entity_heads.png?v=3.0',
             (tex) => {
                 tex.magFilter = THREE.NearestFilter;
                 tex.minFilter = THREE.NearestFilter;
@@ -516,6 +517,13 @@
 
         document.getElementById('stat-voxels').textContent = totalVoxels;
         document.getElementById('stat-entities').textContent = totalEntities;
+
+        const statVis = document.getElementById('stat-vis');
+        if (statVis) {
+            const isVisOn = header.visibilityFilter !== false;
+            statVis.textContent = isVisOn ? 'ON' : 'OFF';
+            statVis.style.color = isVisOn ? 'var(--accent-cyan)' : 'var(--accent-red)';
+        }
     }
 
     function updatePlayerSightline(header) {
@@ -553,6 +561,11 @@
 
     // --- 6. Voxel Upload & Shader Channel Heatmaps ---
     function isVoxelInSlice(vox) {
+        if (currentRenderMode !== 'occlusion' && hideMaskedVoxels) {
+            if (vox.id === 1 || (vox.vis !== undefined && vox.vis <= 0.0)) {
+                return false;
+            }
+        }
         return vox.gx >= slices.minX && vox.gx <= slices.maxX &&
                vox.gy >= slices.minY && vox.gy <= slices.maxY &&
                vox.gz >= slices.minZ && vox.gz <= slices.maxZ;
@@ -561,6 +574,17 @@
     function getVoxelColor(vox, mode) {
         if (mode === 'texture') {
             return tempColor.setRGB(1.0, 1.0, 1.0);
+        }
+
+        if (mode === 'occlusion') {
+            const isVis = (vox.vis !== undefined ? vox.vis > 0.0 : vox.id !== 1);
+            if (isVis) {
+                // Exposed Surface Shell: Vibrant Cyan
+                return tempColor.setRGB(0.0, 0.9, 1.0);
+            } else {
+                // Masked / Culled Underworld: Dark Deep Slate / Violet
+                return tempColor.setRGB(0.18, 0.12, 0.32);
+            }
         }
 
         if (mode === 'hazard') {
@@ -908,6 +932,16 @@
         });
 
         // Overlays & Visual Helpers Toggles
+        const toggleCullMasked = document.getElementById('toggle-cull-masked');
+        if (toggleCullMasked) {
+            toggleCullMasked.addEventListener('change', (e) => {
+                hideMaskedVoxels = e.target.checked;
+                if (latestFrameData) {
+                    renderFrameVoxels(latestFrameData);
+                }
+            });
+        }
+
         document.getElementById('toggle-entities').addEventListener('change', (e) => {
             showEntities = e.target.checked;
             meshEntities.visible = showEntities;
@@ -1091,6 +1125,12 @@
                     toggleGrid.checked = !toggleGrid.checked;
                     toggleGrid.dispatchEvent(new Event('change'));
                 }
+            } else if (key === 'v') {
+                const toggleCullMasked = document.getElementById('toggle-cull-masked');
+                if (toggleCullMasked) {
+                    toggleCullMasked.checked = !toggleCullMasked.checked;
+                    toggleCullMasked.dispatchEvent(new Event('change'));
+                }
             } else if (key === 'e') {
                 const toggleEntities = document.getElementById('toggle-entities');
                 if (toggleEntities) {
@@ -1171,6 +1211,8 @@
         const hard = (vox.hard !== undefined) ? vox.hard.toFixed(1) : '1.5';
         const light = (vox.light !== undefined) ? vox.light.toFixed(2) : '0.0';
         const lightLevel = Math.round((vox.light || 0.0) * 15);
+        const vis = (vox.vis !== undefined) ? vox.vis.toFixed(2) : (vox.id === 1 ? '0.00' : '1.00');
+        const isMasked = (vox.id === 1 || (vox.vis !== undefined && vox.vis <= 0.0));
 
         let entityHtml = '';
         if (vox.entCount > 0) {
@@ -1203,6 +1245,7 @@
             <div class="tooltip-row"><span class="label">Occupancy:</span> <span>${occ}</span></div>
             <div class="tooltip-row ${vox.pass > 0.8 ? 'safe' : vox.pass < 0.2 ? 'danger' : ''}"><span class="label">Passability:</span> <span>${pass}</span></div>
             <div class="tooltip-row ${vox.haz > 0 ? 'danger' : 'safe'}"><span class="label">Hazard:</span> <span>${haz}</span></div>
+            <div class="tooltip-row ${isMasked ? 'danger' : 'safe'}"><span class="label">Visibility (P5):</span> <span>${vis} (${isMasked ? 'MASKED' : 'EXPOSED'})</span></div>
             <div class="tooltip-row"><span class="label">Hardness:</span> <span>${hard}</span></div>
             <div class="tooltip-row"><span class="label">Light Level:</span> <span>${light} (${lightLevel}/15)</span></div>
             ${entityHtml}

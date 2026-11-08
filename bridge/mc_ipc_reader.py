@@ -121,6 +121,7 @@ class MinecraftIpcReader:
             "sequenceId": unpacked[4],
             "activeSlot": unpacked[5],
             "flags": unpacked[6],
+            "visibilityFilter": bool(unpacked[6] & layout.FLAG_VISIBILITY_FILTER),
             "gameTick": unpacked[7],
             "timestampNanos": unpacked[8],
             "playerPos": (unpacked[9], unpacked[10], unpacked[11]),
@@ -153,7 +154,7 @@ class MinecraftIpcReader:
         assert 0 <= lod < 3, "LOD must be 0, 1, or 2"
         version = self.get_protocol_version()
         slot_offset = layout.get_slot_offset(active_slot, version=version)
-        lod_base = layout.get_lod_block_offset(slot_offset, lod)
+        lod_base = layout.get_lod_block_offset(slot_offset, lod, version=version)
 
         n = layout.CELLS_PER_LOD  # 4096
         shape = (layout.GRID_SIZE, layout.GRID_SIZE, layout.GRID_SIZE)
@@ -190,6 +191,13 @@ class MinecraftIpcReader:
             np.float32, n, lod_base + layout.OFF_FLUID_Z
         ).reshape(shape)
 
+        if version >= 3:
+            visibility = self._safe_frombuffer(
+                np.float32, n, lod_base + layout.OFF_VISIBILITY
+            ).reshape(shape)
+        else:
+            visibility = np.ones(shape, dtype=np.float32)
+
         return {
             "block_id": block_id,
             "occupancy": occupancy,
@@ -198,7 +206,8 @@ class MinecraftIpcReader:
             "hardness": hardness,
             "light_level": light_level,
             "fluid_flow_x": fluid_flow_x,
-            "fluid_flow_z": fluid_flow_z
+            "fluid_flow_z": fluid_flow_z,
+            "visibility": visibility
         }
 
     def read_entity_tensors(self, active_slot: int, lod: int = 0) -> Dict[str, np.ndarray]:

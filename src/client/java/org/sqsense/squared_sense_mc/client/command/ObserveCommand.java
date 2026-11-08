@@ -90,9 +90,23 @@ public class ObserveCommand {
             .then(streamStop)
             .then(streamStatus);
 
+        var visOn = ClientCommandManager.literal("on")
+            .executes(ctx -> executeSetVisibility(ctx, true));
+        var visOff = ClientCommandManager.literal("off")
+            .executes(ctx -> executeSetVisibility(ctx, false));
+        var visStatus = ClientCommandManager.literal("status")
+            .executes(ObserveCommand::executeVisibilityStatus);
+
+        var visibilityLiteral = ClientCommandManager.literal("visibility")
+            .executes(ObserveCommand::executeToggleVisibility)
+            .then(visOn)
+            .then(visOff)
+            .then(visStatus);
+
         var observeNode = dispatcher.register(
             ClientCommandManager.literal("observe")
                 .executes(ctx -> executeSingle(ctx, 0, null))
+                .then(visibilityLiteral)
                 .then(streamLiteral)
                 .then(vocabLiteral)
                 .then(allLiteral)
@@ -368,6 +382,33 @@ public class ObserveCommand {
         } else {
             source.sendFeedback(Text.literal("§a[Observe]§r Stream is §7INACTIVE§r. Use §e/observe stream start [interval]§r to begin streaming."));
         }
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int executeToggleVisibility(CommandContext<FabricClientCommandSource> context) {
+        boolean enabled = ObservationConfig.toggleVisibilityFilter();
+        context.getSource().sendFeedback(Text.literal(
+            "§b[SquaredSense] §fVisibility / Occlusion Filter (Phase 5): " +
+            (enabled ? "§aENABLED (culling solid underworld)" : "§cDISABLED (omniscient full underworld)")
+        ));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int executeSetVisibility(CommandContext<FabricClientCommandSource> context, boolean enabled) {
+        ObservationConfig.visibilityFilterEnabled = enabled;
+        context.getSource().sendFeedback(Text.literal(
+            "§b[SquaredSense] §fVisibility / Occlusion Filter (Phase 5): " +
+            (enabled ? "§aENABLED (culling solid underworld)" : "§cDISABLED (omniscient full underworld)")
+        ));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int executeVisibilityStatus(CommandContext<FabricClientCommandSource> context) {
+        boolean enabled = ObservationConfig.visibilityFilterEnabled;
+        context.getSource().sendFeedback(Text.literal(
+            "§b[SquaredSense] §fVisibility / Occlusion Filter (Phase 5): " +
+            (enabled ? "§aENABLED (culling solid underworld)" : "§cDISABLED (omniscient full underworld)")
+        ));
         return Command.SINGLE_SUCCESS;
     }
 

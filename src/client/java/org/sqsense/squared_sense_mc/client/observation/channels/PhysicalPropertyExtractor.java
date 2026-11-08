@@ -144,7 +144,7 @@ public final class PhysicalPropertyExtractor {
             fz = (float) (vel.x * cardinal.getForwardX() + vel.z * cardinal.getForwardZ());
         }
 
-        return new VoxelPhysicalProperties(occ, pass, haz, hard, light, fx, fz);
+        return new VoxelPhysicalProperties(occ, pass, haz, hard, light, fx, fz, 1.0f);
     }
 
     /**
@@ -170,7 +170,7 @@ public final class PhysicalPropertyExtractor {
             fz = avgWorldVx * cardinal.getForwardX() + avgWorldVz * cardinal.getForwardZ();
         }
 
-        return new VoxelPhysicalProperties(occ, pass, haz, hard, light, fx, fz);
+        return new VoxelPhysicalProperties(occ, pass, haz, hard, light, fx, fz, 1.0f);
     }
 
     /**

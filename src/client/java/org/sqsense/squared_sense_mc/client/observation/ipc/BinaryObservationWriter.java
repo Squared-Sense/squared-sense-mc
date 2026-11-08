@@ -17,6 +17,7 @@ import org.sqsense.squared_sense_mc.client.observation.geometry.SnappedCardinal;
 import org.sqsense.squared_sense_mc.client.observation.palette.BlockVocabulary;
 import org.sqsense.squared_sense_mc.client.observation.priority.BlockPriority;
 import org.sqsense.squared_sense_mc.client.observation.priority.BlockPriorityRegistry;
+import org.sqsense.squared_sense_mc.client.observation.visibility.SurfaceShellFilter;
 
 import java.nio.MappedByteBuffer;
 import java.util.Arrays;
@@ -33,6 +34,7 @@ import java.util.Map;
  */
 public class BinaryObservationWriter {
     private final BlockPos.Mutable mutablePos = new BlockPos.Mutable();
+    private final BlockPos.Mutable neighborPos = new BlockPos.Mutable();
     private final Map<Block, Integer> cellCounts = new HashMap<>(32);
     private final PhysicalPropertyExtractor.Accumulator accumulator = new PhysicalPropertyExtractor.Accumulator();
 
@@ -168,6 +170,30 @@ public class BinaryObservationWriter {
                     }
 
                     int blockId = BlockVocabulary.getId(selectedBlock);
+                    float visibility = 1.0f;
+
+                    if (ObservationConfig.visibilityFilterEnabled && blockId != BlockVocabulary.AIR_ID) {
+                        boolean exposed;
+                        if (stride == 1) {
+                            exposed = SurfaceShellFilter.isBlockExposed(world, mutablePos, neighborPos);
+                        } else {
+                            if (accumulator.solidCount < subBlockCount) {
+                                exposed = true;
+                            } else {
+                                int baseLx = transform.getXLocalOffset(gx);
+                                int baseLy = transform.getYLocalOffset(gy);
+                                int baseLz = transform.getZLocalOffset(gz);
+                                int minX = playerX + cardinal.toWorldDeltaX(baseLx, baseLz);
+                                int minY = playerY + baseLy;
+                                int minZ = playerZ + cardinal.toWorldDeltaZ(baseLx, baseLz);
+                                exposed = SurfaceShellFilter.isSubVolumeExposed(world, minX, minY, minZ, stride, mutablePos, neighborPos);
+                            }
+                        }
+                        if (!exposed) {
+                            blockId = BlockVocabulary.MASKED_ID;
+                            visibility = 0.0f;
+                        }
+                    }
 
                     // Direct binary writes into MappedByteBuffer
                     buffer.putShort(lodBase + IpcBufferLayout.OFF_BLOCK_ID + cellIdx * 2, (short) blockId);
@@ -178,6 +204,7 @@ public class BinaryObservationWriter {
                     buffer.putFloat(lodBase + IpcBufferLayout.OFF_LIGHT + cellIdx * 4, props.lightLevel());
                     buffer.putFloat(lodBase + IpcBufferLayout.OFF_FLUID_X + cellIdx * 4, props.flowX());
                     buffer.putFloat(lodBase + IpcBufferLayout.OFF_FLUID_Z + cellIdx * 4, props.flowZ());
+                    buffer.putFloat(lodBase + IpcBufferLayout.OFF_VISIBILITY + cellIdx * 4, visibility);
                 }
             }
         }

@@ -11,6 +11,7 @@ import com.google.gson.JsonObject;
  * - hardness: average block break hardness in cell
  * - lightLevel: combined block + sky light normalized to [0.0, 1.0]
  * - flowX, flowZ: fluid velocity vector rotated into egocentric frame [-1.0, 1.0]
+ * - visibility: exposed-face surface shell visibility [0.0, 1.0] (1.0 exposed, 0.0 occluded / masked)
  */
 public record VoxelPhysicalProperties(
     float occupancy,
@@ -19,8 +20,15 @@ public record VoxelPhysicalProperties(
     float hardness,
     float lightLevel,
     float flowX,
-    float flowZ
+    float flowZ,
+    float visibility
 ) {
+    public VoxelPhysicalProperties withVisibility(float newVisibility) {
+        return new VoxelPhysicalProperties(
+            occupancy, passability, hazard, hardness, lightLevel, flowX, flowZ, newVisibility
+        );
+    }
+
     public JsonObject toJsonObject() {
         JsonObject obj = new JsonObject();
         obj.addProperty("occupancy", round(occupancy));
@@ -34,6 +42,7 @@ public record VoxelPhysicalProperties(
         flow.add(round(flowZ));
         obj.add("fluidFlow", flow);
 
+        obj.addProperty("visibility", round(visibility));
         return obj;
     }
 

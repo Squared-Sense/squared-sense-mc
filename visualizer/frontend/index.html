@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Squared Sense MC — 3D Observation Visualizer</title>
-    <link rel="stylesheet" href="css/style.css?v=2.8">
+    <link rel="stylesheet" href="css/style.css?v=3.0">
 </head>
 <body>
     <!-- Top Telemetry HUD -->
@@ -53,6 +53,10 @@
                 <span class="stat-label">ENTITIES:</span>
                 <span id="stat-entities" class="stat-value" style="color: var(--accent-yellow);">0</span>
             </div>
+            <div class="stat-item stat-vis">
+                <span class="stat-label">VIS:</span>
+                <span id="stat-vis" class="stat-value" style="color: var(--accent-cyan);">ON</span>
+            </div>
         </div>
     </header>
 
@@ -99,6 +103,7 @@
                     <button class="btn" data-mode="passability">Passability</button>
                     <button class="btn" data-mode="light">Light Level</button>
                     <button class="btn" data-mode="hardness">Hardness</button>
+                    <button class="btn" data-mode="occlusion" style="grid-column: span 2;">Occlusion Mask (Phase 5)</button>
                 </div>
             </div>
         </div>
@@ -112,6 +117,13 @@
                 </div>
             </div>
             <div class="accordion-body">
+                <div class="toggle-row">
+                    <span>Hide Masked / Culled (V)</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-cull-masked" checked>
+                        <span class="slider-track"></span>
+                    </label>
+                </div>
                 <div class="toggle-row">
                     <span>Entity Wireframes</span>
                     <label class="toggle-switch">
@@ -228,6 +240,6 @@
     <script src="vendor/three.min.js"></script>
     <script src="vendor/OrbitControls.js"></script>
     <!-- Application Logic -->
-    <script src="js/app.js?v=2.8"></script>
+    <script src="js/app.js?v=3.0"></script>
 </body>
 </html>

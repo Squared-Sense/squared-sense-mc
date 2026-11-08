@@ -59,5 +59,17 @@ public final class ObservationConfig {
         }
         return LOD_STRIDES[lod];
     }
+
+    /**
+     * Phase 5 Visibility & Occlusion Masking toggle.
+     * When true, blocks completely surrounded by opaque blocks are culled to MASKED_ID (1) with visibility 0.0.
+     * When false, all blocks retain their raw omniscient block IDs with visibility 1.0.
+     */
+    public static volatile boolean visibilityFilterEnabled = true;
+
+    public static boolean toggleVisibilityFilter() {
+        visibilityFilterEnabled = !visibilityFilterEnabled;
+        return visibilityFilterEnabled;
+    }
 }
 

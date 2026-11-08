@@ -15,6 +15,7 @@ import org.sqsense.squared_sense_mc.client.observation.geometry.SnappedCardinal;
 import org.sqsense.squared_sense_mc.client.observation.palette.BlockVocabulary;
 import org.sqsense.squared_sense_mc.client.observation.priority.BlockPriority;
 import org.sqsense.squared_sense_mc.client.observation.priority.BlockPriorityRegistry;
+import org.sqsense.squared_sense_mc.client.observation.visibility.SurfaceShellFilter;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -41,6 +42,7 @@ public class BlockSampler {
         final int playerZ = playerPos.getZ();
 
         BlockPos.Mutable mutablePos = new BlockPos.Mutable();
+        BlockPos.Mutable neighborPos = new BlockPos.Mutable();
         Map<Block, Integer> cellCounts = new HashMap<>(32);
         PhysicalPropertyExtractor.Accumulator accumulator = new PhysicalPropertyExtractor.Accumulator();
         Map<String, Integer> globalCounts = new LinkedHashMap<>();
@@ -118,7 +120,33 @@ public class BlockSampler {
                     }
 
                     int blockId = BlockVocabulary.getId(selectedBlock);
+                    float visibility = 1.0f;
+
+                    if (ObservationConfig.visibilityFilterEnabled && blockId != BlockVocabulary.AIR_ID) {
+                        boolean exposed;
+                        if (stride == 1) {
+                            exposed = SurfaceShellFilter.isBlockExposed(world, mutablePos, neighborPos);
+                        } else {
+                            if (accumulator.solidCount < subBlockCount) {
+                                exposed = true;
+                            } else {
+                                int baseLx = transform.getXLocalOffset(gx);
+                                int baseLy = transform.getYLocalOffset(gy);
+                                int baseLz = transform.getZLocalOffset(gz);
+                                int minX = playerX + transform.getCardinal().toWorldDeltaX(baseLx, baseLz);
+                                int minY = playerY + baseLy;
+                                int minZ = playerZ + transform.getCardinal().toWorldDeltaZ(baseLx, baseLz);
+                                exposed = SurfaceShellFilter.isSubVolumeExposed(world, minX, minY, minZ, stride, mutablePos, neighborPos);
+                            }
+                        }
+                        if (!exposed) {
+                            blockId = BlockVocabulary.MASKED_ID;
+                            visibility = 0.0f;
+                        }
+                    }
+
                     String blockName = BlockVocabulary.getName(blockId);
+                    physicalProperties = physicalProperties.withVisibility(visibility);
 
                     if (blockId == BlockVocabulary.AIR_ID) {
                         airCells++;
@@ -128,6 +156,7 @@ public class BlockSampler {
                     JsonObject cellObj = new JsonObject();
                     cellObj.addProperty("id", blockId);
                     cellObj.addProperty("name", blockName);
+                    cellObj.addProperty("visible", visibility > 0.0f);
                     cellObj.addProperty("dx", dx);
                     cellObj.addProperty("dy", dy);
                     cellObj.addProperty("dz", dz);

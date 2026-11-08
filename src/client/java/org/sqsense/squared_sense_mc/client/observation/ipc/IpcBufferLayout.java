@@ -15,7 +15,11 @@ public final class IpcBufferLayout {
 
     // Magic & Protocol Version
     public static final int MAGIC = 0x53515343; // "SQSC" in Little-Endian
-    public static final int PROTOCOL_VERSION = 2;
+    public static final int PROTOCOL_VERSION = 3;
+
+    // Flags (OFF_FLAGS uint32 bitmask)
+    public static final int FLAG_STREAM_ACTIVE = 1 << 0;
+    public static final int FLAG_VISIBILITY_FILTER = 1 << 1;
 
     // Dimensions
     public static final int GRID_SIZE = 16;
@@ -51,7 +55,7 @@ public final class IpcBufferLayout {
     public static final int OFF_STRIDE_2 = 94;           // uint8 (1)
     public static final int OFF_RESERVED0 = 95;          // uint8 (1)
 
-    // Block Channels per LOD (30 bytes per cell * 4096 = 122,880 bytes per LOD):
+    // Block Channels per LOD (34 bytes per cell * 4096 = 139,264 bytes per LOD):
     // - uint16 blockId (8192 bytes)
     // - float32 occupancy (16384 bytes)
     // - float32 passability (16384 bytes)
@@ -60,6 +64,7 @@ public final class IpcBufferLayout {
     // - float32 lightLevel (16384 bytes)
     // - float32 fluidFlowX (16384 bytes)
     // - float32 fluidFlowZ (16384 bytes)
+    // - float32 visibility (16384 bytes)
     public static final int OFF_BLOCK_ID = 0;
     public static final int OFF_OCCUPANCY = 8192;
     public static final int OFF_PASSABILITY = 24576;
@@ -68,9 +73,10 @@ public final class IpcBufferLayout {
     public static final int OFF_LIGHT = 73728;
     public static final int OFF_FLUID_X = 90112;
     public static final int OFF_FLUID_Z = 106496;
+    public static final int OFF_VISIBILITY = 122880;
 
-    public static final int BLOCK_BYTES_PER_LOD = CELLS_PER_LOD * 30; // 122,880
-    public static final int TOTAL_BLOCK_BYTES = BLOCK_BYTES_PER_LOD * NUM_LODS; // 368,640
+    public static final int BLOCK_BYTES_PER_LOD = CELLS_PER_LOD * 34; // 139,264
+    public static final int TOTAL_BLOCK_BYTES = BLOCK_BYTES_PER_LOD * NUM_LODS; // 417,792
 
     // Entity Channels per LOD (10 bytes per cell * 4096 = 40,960 bytes per LOD):
     // - uint8 entityCount (4096 bytes)
@@ -89,16 +95,16 @@ public final class IpcBufferLayout {
     public static final int AUX_BYTES = 256;
 
     // Slot Size (padded to 4 KB page alignment)
-    // 368,640 + 122,880 + 256 = 491,776 -> rounded up to 495,616 (121 * 4096)
+    // 417,792 + 122,880 + 256 = 540,928 -> rounded up to 544,768 (133 * 4096)
     public static final int UNPADDED_SLOT_SIZE = TOTAL_BLOCK_BYTES + TOTAL_ENTITY_BYTES + AUX_BYTES;
-    public static final int SLOT_SIZE = ((UNPADDED_SLOT_SIZE + 4095) / 4096) * 4096; // 495,616
+    public static final int SLOT_SIZE = ((UNPADDED_SLOT_SIZE + 4095) / 4096) * 4096; // 544,768
 
     // Slot Offsets
     public static final int SLOT_0_OFFSET = HEADER_SIZE; // 4096
-    public static final int SLOT_1_OFFSET = HEADER_SIZE + SLOT_SIZE; // 4096 + 495616 = 499,712
+    public static final int SLOT_1_OFFSET = HEADER_SIZE + SLOT_SIZE; // 4096 + 544768 = 548,864
 
     // Total MMF File Size
-    public static final int TOTAL_FILE_SIZE = HEADER_SIZE + SLOT_SIZE * 2; // 995,328 bytes (~972 KB)
+    public static final int TOTAL_FILE_SIZE = HEADER_SIZE + SLOT_SIZE * 2; // 1,093,632 bytes (~1.04 MB)
 
     public static int getSlotOffset(int slotIndex) {
         return HEADER_SIZE + (slotIndex & 1) * SLOT_SIZE;
