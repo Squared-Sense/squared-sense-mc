@@ -124,7 +124,22 @@ Because each feature channel is laid out as a contiguous flat array of $4,096$ v
 
 ---
 
-## 5. Python / PyTorch Zero-Copy Consumer Example
+## 5. In-Game Streaming Commands
+
+Real-time streaming is controlled dynamically in-game:
+
+```
+/observe stream start [interval]   # Starts streaming every [interval] ticks (default: 2 ticks = 10 Hz)
+/observe stream stop               # Pauses streaming
+/observe stream status             # Displays current streaming status, FPS, and frame count
+```
+*(Also accessible via alias `/obs stream <start|stop|status>`)*
+
+Streaming runs via Fabric's `ClientTickEvents.END_CLIENT_TICK` hook without blocking the render pipeline.
+
+---
+
+## 6. Python / PyTorch Zero-Copy Consumer Example
 
 ```python
 import mmap

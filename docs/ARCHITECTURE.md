@@ -48,7 +48,8 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 │   ├── ipc/
 │   │   ├── IpcBufferLayout.java          # Byte offsets and binary layout constants for MMF IPC
 │   │   ├── SharedMemoryChannel.java      # Cross-platform MMF lifecycle & Ping-Pong double-buffering
-│   │   └── BinaryObservationWriter.java  # Zero-allocation direct binary tensor writer for B0..B2 and E0..E2
+│   │   ├── BinaryObservationWriter.java  # Zero-allocation direct binary tensor writer for B0..B2 and E0..E2
+│   │   └── ObservationStreamManager.java # Continuous ClientTick runner and cadence controller
 │   ├── sampler/
 │   │   ├── BlockSampler.java             # Zero-allocation block sampling and priority downsampling
 │   │   └── SamplingResult.java           # Record holding grid tensor array and cell statistics
@@ -80,6 +81,7 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 | `IpcBufferLayout` | Defines exact byte offsets, channel ordering, and memory alignment for the cross-platform MMF bus. |
 | `SharedMemoryChannel` | Cross-platform MMF channel manager implementing lock-free Ping-Pong double buffering with memory fences. |
 | `BinaryObservationWriter` | Samples and writes $B_0..B_2$ and $E_0..E_2$ binary tensors directly into `MappedByteBuffer` in under 0.2 ms with zero GC allocations. |
+| `ObservationStreamManager` | Manages real-time streaming cadence on `ClientTickEvents.END_CLIENT_TICK` (default: every 2 ticks / 10 Hz). |
 | `BlockSampler` | Fast traversal of the client world using cached block IDs, mutable coordinate objects, and priority downsampling. |
 | `ObservationJsonSerializer` | Assembles egocentric JSON payloads and performs non-blocking I/O via `CompletableFuture.runAsync`. |
 | `ObserveCommand` | Brigadier command parsing, validation, and user feedback formatting. |

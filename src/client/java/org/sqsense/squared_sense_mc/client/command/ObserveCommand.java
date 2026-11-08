@@ -23,6 +23,7 @@ import org.sqsense.squared_sense_mc.client.observation.entity.EntitySamplingResu
 import org.sqsense.squared_sense_mc.client.observation.geometry.ObservationTransform;
 import org.sqsense.squared_sense_mc.client.observation.geometry.SnappedCardinal;
 import org.sqsense.squared_sense_mc.client.observation.geometry.YawHysteresisTracker;
+import org.sqsense.squared_sense_mc.client.observation.ipc.ObservationStreamManager;
 import org.sqsense.squared_sense_mc.client.observation.palette.BlockVocabulary;
 import org.sqsense.squared_sense_mc.client.observation.sampler.BlockSampler;
 import org.sqsense.squared_sense_mc.client.observation.sampler.SamplingResult;
@@ -70,9 +71,29 @@ public class ObserveCommand {
         var vocabLiteral = ClientCommandManager.literal("vocab")
             .executes(ObserveCommand::executeExportVocab);
 
+        var intervalArg = ClientCommandManager.argument("interval", IntegerArgumentType.integer(1, 100))
+            .executes(ctx -> executeStreamStart(ctx, IntegerArgumentType.getInteger(ctx, "interval")));
+
+        var streamStart = ClientCommandManager.literal("start")
+            .executes(ctx -> executeStreamStart(ctx, ObservationConfig.DEFAULT_STREAM_INTERVAL_TICKS))
+            .then(intervalArg);
+
+        var streamStop = ClientCommandManager.literal("stop")
+            .executes(ObserveCommand::executeStreamStop);
+
+        var streamStatus = ClientCommandManager.literal("status")
+            .executes(ObserveCommand::executeStreamStatus);
+
+        var streamLiteral = ClientCommandManager.literal("stream")
+            .executes(ObserveCommand::executeStreamStatus)
+            .then(streamStart)
+            .then(streamStop)
+            .then(streamStatus);
+
         var observeNode = dispatcher.register(
             ClientCommandManager.literal("observe")
                 .executes(ctx -> executeSingle(ctx, 0, null))
+                .then(streamLiteral)
                 .then(vocabLiteral)
                 .then(allLiteral)
                 .then(lodArg)
@@ -292,6 +313,62 @@ public class ObserveCommand {
             source.sendError(Text.literal("§c[Observe] Failed to export vocabulary: " + e.getMessage()));
             return 0;
         }
+    }
+
+    private static int executeStreamStart(CommandContext<FabricClientCommandSource> context, int interval) {
+        var source = context.getSource();
+        ObservationStreamManager manager = ObservationStreamManager.getInstance();
+
+        boolean success = manager.start(interval);
+        if (success) {
+            float hz = 20.0f / interval;
+            Path shmPath = manager.getChannel().getFilePath();
+            MutableText msg = Text.literal("§a[Observe]§r Started real-time MMF stream every §b"
+                + interval + " ticks§r (§e" + String.format("%.1f", hz) + " Hz§r) to ")
+                .append(Text.literal("§6" + shmPath.getFileName() + "§r").styled(style -> style
+                    .withUnderline(true)
+                    .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, shmPath.toAbsolutePath().toString()))
+                ))
+                .append(Text.literal(" §7[Click to open]§r"));
+            source.sendFeedback(msg);
+            return Command.SINGLE_SUCCESS;
+        } else {
+            source.sendError(Text.literal("§c[Observe] Failed to open MMF shared memory channel."));
+            return 0;
+        }
+    }
+
+    private static int executeStreamStop(CommandContext<FabricClientCommandSource> context) {
+        var source = context.getSource();
+        ObservationStreamManager manager = ObservationStreamManager.getInstance();
+
+        long frames = manager.getFramesStreamed();
+        manager.stop();
+
+        source.sendFeedback(Text.literal("§a[Observe]§r Stopped real-time MMF stream. (Total frames streamed: §b" + frames + "§r)"));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int executeStreamStatus(CommandContext<FabricClientCommandSource> context) {
+        var source = context.getSource();
+        ObservationStreamManager manager = ObservationStreamManager.getInstance();
+
+        if (manager.isActive()) {
+            int interval = manager.getIntervalTicks();
+            float hz = 20.0f / interval;
+            Path shmPath = manager.getChannel().getFilePath();
+            MutableText msg = Text.literal("§a[Observe]§r Stream is §2ACTIVE§r: interval §b"
+                + interval + " ticks§r (§e" + String.format("%.1f", hz) + " Hz§r), §b"
+                + manager.getFramesStreamed() + " frames§r streamed to ")
+                .append(Text.literal("§6" + shmPath.getFileName() + "§r").styled(style -> style
+                    .withUnderline(true)
+                    .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, shmPath.toAbsolutePath().toString()))
+                ));
+            source.sendFeedback(msg);
+        } else {
+            source.sendFeedback(Text.literal("§a[Observe]§r Stream is §7INACTIVE§r. Use §e/observe stream start [interval]§r to begin streaming."));
+        }
+        return Command.SINGLE_SUCCESS;
     }
 
     private static String resolveFilename(String customFilename, String defaultFilename) {

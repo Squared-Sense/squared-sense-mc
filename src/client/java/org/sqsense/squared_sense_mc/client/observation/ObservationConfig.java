@@ -48,6 +48,11 @@ public final class ObservationConfig {
      */
     public static final int[] LOD_STRIDES = {1, 2, 4};
 
+    /**
+     * Default streaming cadence in Minecraft client game ticks (2 ticks = 10 Hz / 100 ms).
+     */
+    public static final int DEFAULT_STREAM_INTERVAL_TICKS = 2;
+
     public static int getStride(int lod) {
         if (lod < 0 || lod >= LOD_STRIDES.length) {
             throw new IllegalArgumentException("Unsupported LOD index: " + lod + " (must be 0, 1, or 2)");

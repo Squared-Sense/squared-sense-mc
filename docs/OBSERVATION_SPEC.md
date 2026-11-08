@@ -55,14 +55,18 @@ Primary observation command for RL data collection.
 /observe all                  # Captures all 3 LODs (B0, B1, B2) in one file
 /observe all <filename>       # Captures all 3 LODs to a custom filename
 /observe vocab                # Exports canonical block_vocab.json (Task 9)
+/observe stream start [t]     # Starts real-time MMF streaming every [t] ticks (default: 2 ticks / 10 Hz)
+/observe stream stop          # Stops real-time MMF streaming
+/observe stream status        # Checks current MMF streaming state, FPS, and frame count
 ```
 
-*Note: `/obs` is an alias and accepts identical arguments (e.g., `/obs vocab`, `/obs all`).*
+*Note: `/obs` is an alias and accepts identical arguments (e.g., `/obs stream start`, `/obs vocab`, `/obs all`).*
 
 #### File Destinations
 Files are saved inside the Minecraft instance directory:
 - Custom / Timestamped: `observations/obs_lod<LOD>_<timestamp>.json` (or `obs_all_<timestamp>.json`)
 - Canonical Vocabulary: `observations/block_vocab.json` (auto-generated or exported via `/observe vocab`)
+- Shared Memory MMF: `/dev/shm/squared_sense_mc.bin` on Linux, `%TEMP%\squared_sense_mc.bin` on Windows
 - Latest pointers (auto-overwritten for scripts):
   - `observations/obs_latest.json` (most recent capture of any kind)
   - `observations/obs_lod<LOD>_latest.json` (most recent capture for that specific LOD)
