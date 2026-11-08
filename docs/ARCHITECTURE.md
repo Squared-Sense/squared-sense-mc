@@ -55,11 +55,25 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 │   │   └── SamplingResult.java           # Record holding grid tensor array and cell statistics
 │   └── serialization/
 │       └── ObservationJsonSerializer.java# Metadata generation and async file writing
-├── bridge/
-│   ├── mc_ipc_layout.py                  # Matching binary IPC constants for Python
-│   └── mc_ipc_reader.py                  # Zero-copy NumPy/PyTorch MMF reader
-└── util/
-    └── BlockInspector.java               # Block raycast utilities
+├── util/
+│   └── BlockInspector.java               # Block raycast utilities
+bridge/
+├── mc_ipc_layout.py                      # Matching binary IPC constants for Python
+└── mc_ipc_reader.py                      # Zero-copy NumPy/PyTorch MMF reader
+visualizer/
+├── backend/
+│   ├── assets/
+│   │   ├── atlas_uvs.json                # 1,014 mapped token UV coordinates
+│   │   └── texture_atlas.png             # 512x512 official 16x16 PNG texture atlas
+│   ├── texture_extractor.py              # JAR extractor & atlas stitcher
+│   └── visualizer_server.py              # MMF IPC reader, HTTP & WebSocket server
+└── frontend/
+    ├── css/style.css                     # Dark cyberpunk telemetry theme
+    ├── js/app.js                         # Three.js instanced rendering & controls
+    ├── vendor/
+    │   ├── OrbitControls.js              # Three.js camera interaction
+    │   └── three.min.js                  # Three.js r128 WebGL library
+    └── index.html                        # HUD layout and control panels
 ```
 
 ### Component Responsibilities
@@ -85,6 +99,9 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 | `BlockSampler` | Fast traversal of the client world using cached block IDs, mutable coordinate objects, and priority downsampling. |
 | `ObservationJsonSerializer` | Assembles egocentric JSON payloads and performs non-blocking I/O via `CompletableFuture.runAsync`. |
 | `ObserveCommand` | Brigadier command parsing, validation, and user feedback formatting. |
+| `texture_extractor.py` | Compiles 1,012 official 16x16 block textures from the Minecraft JAR into a 512x512 atlas and JSON UV map. |
+| `visualizer_server.py` | Bridges MMF IPC to the browser, serving static assets on HTTP :8765 and live frames on WebSocket :8766. |
+| `app.js` | WebGL Three.js renderer featuring instanced official textures, multi-LOD overlap, physical channel heatmaps, and entity overlays. |
 
 ---
 

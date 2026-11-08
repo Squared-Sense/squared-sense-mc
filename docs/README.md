@@ -50,3 +50,12 @@ Welcome to the internal documentation for **Squared Sense MC**, a client-side Mi
    - In-game commands (`/observe`, `/obs`, `/squish`).
    - JSON output schema and Python consumption examples.
 
+9. **[3D Real-Time Visualizer](VISUALIZER.md)**
+   - Zero-overhead Three.js Hardware Instanced 3D viewport for a secondary monitor.
+   - Official 16x16 Minecraft textures via 512x512 texture atlas (Option B).
+   - Multi-LOD Overlap mode ($B_0$ solid, $B_1$ semi-transparent, $B_2$ wireframe).
+   - Physical channel heatmaps (Hazard, Passability, Light Level, Hardness).
+   - Entity wireframe bounding boxes (pulsing red hostile, green passive) and sightline laser.
+   - Interactive cross-section slice planes and voxel tooltip raycasting.
+
+
