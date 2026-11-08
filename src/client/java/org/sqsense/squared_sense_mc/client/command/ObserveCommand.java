@@ -21,6 +21,7 @@ import org.sqsense.squared_sense_mc.client.observation.ObservationConfig;
 import org.sqsense.squared_sense_mc.client.observation.geometry.ObservationTransform;
 import org.sqsense.squared_sense_mc.client.observation.geometry.SnappedCardinal;
 import org.sqsense.squared_sense_mc.client.observation.geometry.YawHysteresisTracker;
+import org.sqsense.squared_sense_mc.client.observation.palette.BlockVocabulary;
 import org.sqsense.squared_sense_mc.client.observation.sampler.BlockSampler;
 import org.sqsense.squared_sense_mc.client.observation.sampler.SamplingResult;
 import org.sqsense.squared_sense_mc.client.observation.serialization.ObservationJsonSerializer;
@@ -64,9 +65,13 @@ public class ObserveCommand {
             .executes(ctx -> executeAll(ctx, null))
             .then(allFilenameArg);
 
+        var vocabLiteral = ClientCommandManager.literal("vocab")
+            .executes(ObserveCommand::executeExportVocab);
+
         var observeNode = dispatcher.register(
             ClientCommandManager.literal("observe")
                 .executes(ctx -> executeSingle(ctx, 0, null))
+                .then(vocabLiteral)
                 .then(allLiteral)
                 .then(lodArg)
         );
@@ -237,6 +242,36 @@ public class ObserveCommand {
         );
 
         return Command.SINGLE_SUCCESS;
+    }
+
+    private static int executeExportVocab(CommandContext<FabricClientCommandSource> context) {
+        var source = context.getSource();
+        MinecraftClient client = source.getClient();
+        if (client == null) {
+            source.sendError(Text.literal("§c[Observe] Client not available."));
+            return 0;
+        }
+
+        Path baseDir = client.runDirectory.toPath().resolve("observations");
+        Path vocabFile = baseDir.resolve("block_vocab.json");
+
+        try {
+            BlockVocabulary.exportVocabulary(vocabFile);
+            int size = BlockVocabulary.getVocabSize();
+            MutableText msg = Text.literal("§a[Observe]§r Exported canonical vocabulary (§b" + size + "§r tokens) to ")
+                .append(Text.literal("§6block_vocab.json§r").styled(style -> style
+                    .withUnderline(true)
+                    .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, vocabFile.toAbsolutePath().toString()))
+                ))
+                .append(Text.literal(" §7[Click to open]§r"));
+            source.sendFeedback(msg);
+            LOGGER.info("Observe: Exported block vocabulary ({} tokens) to {}", size, vocabFile.toAbsolutePath());
+            return Command.SINGLE_SUCCESS;
+        } catch (Exception e) {
+            LOGGER.error("Observe: Failed to export vocabulary", e);
+            source.sendError(Text.literal("§c[Observe] Failed to export vocabulary: " + e.getMessage()));
+            return 0;
+        }
     }
 
     private static String resolveFilename(String customFilename, String defaultFilename) {

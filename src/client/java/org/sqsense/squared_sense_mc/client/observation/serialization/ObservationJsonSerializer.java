@@ -7,6 +7,7 @@ import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import org.sqsense.squared_sense_mc.client.observation.ObservationConfig;
 import org.sqsense.squared_sense_mc.client.observation.geometry.ObservationTransform;
+import org.sqsense.squared_sense_mc.client.observation.palette.BlockVocabulary;
 import org.sqsense.squared_sense_mc.client.observation.sampler.SamplingResult;
 
 import java.io.IOException;
@@ -81,8 +82,10 @@ public class ObservationJsonSerializer {
         meta.addProperty("gridSize", ObservationConfig.GRID_SIZE);
         meta.addProperty("coordinateFrame", "relative_player_feet_egocentric");
         meta.addProperty("downsampling", "priority_hierarchy");
+        meta.addProperty("vocabSize", BlockVocabulary.getVocabSize());
 
         com.google.gson.JsonArray channels = new com.google.gson.JsonArray();
+        channels.add("id");
         channels.add("name");
         channels.add("dx");
         channels.add("dy");
@@ -141,6 +144,10 @@ public class ObservationJsonSerializer {
             try {
                 if (targetFile.getParent() != null) {
                     Files.createDirectories(targetFile.getParent());
+                    Path vocabFile = targetFile.getParent().resolve("block_vocab.json");
+                    if (!Files.exists(vocabFile)) {
+                        BlockVocabulary.exportVocabulary(vocabFile);
+                    }
                 }
                 String jsonString = GSON.toJson(json);
                 Files.writeString(targetFile, jsonString, StandardCharsets.UTF_8);

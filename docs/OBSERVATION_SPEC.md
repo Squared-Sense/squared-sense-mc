@@ -52,13 +52,15 @@ Primary observation command for RL data collection.
 /observe <0|1|2> <filename>   # Captures specific LOD to a custom filename
 /observe all                  # Captures all 3 LODs (B0, B1, B2) in one file
 /observe all <filename>       # Captures all 3 LODs to a custom filename
+/observe vocab                # Exports canonical block_vocab.json (Task 9)
 ```
 
-*Note: `/obs` is an alias and accepts identical arguments.*
+*Note: `/obs` is an alias and accepts identical arguments (e.g., `/obs vocab`, `/obs all`).*
 
 #### File Destinations
 Files are saved inside the Minecraft instance directory:
 - Custom / Timestamped: `observations/obs_lod<LOD>_<timestamp>.json` (or `obs_all_<timestamp>.json`)
+- Canonical Vocabulary: `observations/block_vocab.json` (auto-generated or exported via `/observe vocab`)
 - Latest pointers (auto-overwritten for scripts):
   - `observations/obs_latest.json` (most recent capture of any kind)
   - `observations/obs_lod<LOD>_latest.json` (most recent capture for that specific LOD)
@@ -92,6 +94,20 @@ Outputs to `squish_output/`.
     "stride": 1,
     "coordinateFrame": "relative_player_feet_egocentric",
     "downsampling": "priority_hierarchy",
+    "vocabSize": 882,
+    "channels": [
+      "id",
+      "name",
+      "dx",
+      "dy",
+      "dz",
+      "occupancy",
+      "passability",
+      "hazard",
+      "hardness",
+      "lightLevel",
+      "fluidFlow"
+    ],
     "worldCoverage": {
       "sizeX": 16,
       "sizeY": 16,
@@ -122,6 +138,7 @@ Outputs to `squish_output/`.
   "grid": [
     ... 16x16x16 3D array: grid[lateral_x][vertical_y][forward_z] ...
     {
+      "id": 782,
       "name": "minecraft:stone",
       "dx": -2,
       "dy": -1,
@@ -166,13 +183,22 @@ Outputs to `squish_output/`.
 import json
 import numpy as np
 
-def load_latest_observation(obs_path="observations/obs_latest.json"):
-    with open(obs_path, "r") as f:
+def load_latest_observation(obs_path="observations/obs_latest.json", vocab_path="observations/block_vocab.json"):
+    with open(obs_path, "r", encoding="utf-8") as f:
         data = json.load(f)
+
+    # Optional: load canonical vocabulary
+    try:
+        with open(vocab_path, "r", encoding="utf-8") as vf:
+            vocab = json.load(vf)
+            print(f"Loaded block vocabulary: {vocab['vocabSize']} tokens")
+    except FileNotFoundError:
+        vocab = None
 
     meta = data["metadata"]
     print(f"Captured {meta['gridSize']}^3 observation facing {meta['camera']['cardinalDirection']}")
     print(f"Foot Level Index: gy={meta['camera']['footIndex']}, Player Forward: gz={meta['camera']['playerForwardIndex']}")
+    print(f"Vocab Size: {meta.get('vocabSize')}, Channels: {meta.get('channels')}")
 
     # If captured via /observe all
     if "b0_lod0" in data:
@@ -185,11 +211,12 @@ def load_latest_observation(obs_path="observations/obs_latest.json"):
     # Access cell at player position: [lateral=8][footIndex][forward=2]
     foot_idx = meta["camera"]["footIndex"]
     player_cell = grid_b0[8][foot_idx][2]
-    print(f"Block at player's feet: {player_cell['name']} (dx={player_cell['dx']}, dy={player_cell['dy']}, dz={player_cell['dz']})")
+    print(f"Block at player's feet: {player_cell['name']} (ID={player_cell.get('id')}, dx={player_cell['dx']}, dy={player_cell['dy']}, dz={player_cell['dz']})")
+    print(f"  Physical: occupancy={player_cell['properties']['occupancy']}, passability={player_cell['properties']['passability']}")
 
     # Access 1 block directly ahead of the player: gz = 3
     block_ahead = grid_b0[8][foot_idx][3]
-    print(f"Block directly in front: {block_ahead['name']} (dx={block_ahead['dx']}, dy={block_ahead['dy']}, dz={block_ahead['dz']})")
+    print(f"Block directly in front: {block_ahead['name']} (ID={block_ahead.get('id')}, dx={block_ahead['dx']}, dy={block_ahead['dy']}, dz={block_ahead['dz']})")
 
     return data
 

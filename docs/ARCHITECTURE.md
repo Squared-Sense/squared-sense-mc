@@ -38,6 +38,8 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 │   ├── priority/
 │   │   ├── BlockPriority.java            # Priority tier enum (HAZARD > INTERACTIVE > LIQUID > FOLIAGE > SOLID > AIR)
 │   │   └── BlockPriorityRegistry.java    # Cached O(1) block-to-priority classifier with tag fallbacks
+│   ├── palette/
+│   │   └── BlockVocabulary.java          # Canonical alphabetical token ID dictionary & JSON exporter
 │   ├── sampler/
 │   │   ├── BlockSampler.java             # Zero-allocation block sampling and priority downsampling
 │   │   └── SamplingResult.java           # Record holding grid tensor array and cell statistics
@@ -60,6 +62,7 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 | `ObservationTransform` | Encapsulates camera state and maps tensor indices $(gx, gy, gz) \in [0..15]^3$ to world relative offsets $(\Delta x, \Delta y, \Delta z)$. |
 | `BlockPriority` | 6-tier priority hierarchy enum (HAZARD, INTERACTIVE, LIQUID, FOLIAGE, SOLID, AIR). |
 | `BlockPriorityRegistry` | High-speed singleton block-to-priority classifier with cached lookups and vanilla tag fallbacks. |
+| `BlockVocabulary` | Static canonical vocabulary mapping Minecraft blocks to frozen integer token IDs (0=Air, 1=Masked, 2..N=Blocks) with $O(1)$ lookups and JSON export. |
 | `BlockSampler` | Fast traversal of the client world using cached block IDs, mutable coordinate objects, and priority downsampling. |
 | `ObservationJsonSerializer` | Assembles egocentric JSON payloads and performs non-blocking I/O via `CompletableFuture.runAsync`. |
 | `ObserveCommand` | Brigadier command parsing, validation, and user feedback formatting. |

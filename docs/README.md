@@ -26,7 +26,13 @@ Welcome to the internal documentation for **Squared Sense MC**, a client-side Mi
    - Egocentric rotation of fluid velocity vectors.
    - Sub-volume aggregation rules and PyTorch tensor conversion.
 
-5. **[Observation Specification & Commands](OBSERVATION_SPEC.md)**
+5. **[Integer Palette Mapping & Vocabulary](INTEGER_PALETTE_MAPPING.md)**
+   - Static canonical integer tokens ($0 \dots N$) frozen alphabetically.
+   - Reserved tokens: ID 0 = `minecraft:air`, ID 1 = `special:masked`.
+   - Dynamic caching, auto-export to `block_vocab.json`, and `/observe vocab` command.
+   - PyTorch `nn.Embedding` integration with 1:1 synchronization.
+
+6. **[Observation Specification & Commands](OBSERVATION_SPEC.md)**
    - Fixed $16\times 16\times 16$ grid tensors across LODs 0, 1, and 2 (strides 1, 2, and 4).
    - Priority downsampling integration and tie-breaking algorithms.
    - In-game commands (`/observe`, `/obs`, `/squish`).

@@ -6,30 +6,26 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.world.ClientWorld;
-import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
 import org.sqsense.squared_sense_mc.client.observation.ObservationConfig;
 import org.sqsense.squared_sense_mc.client.observation.channels.PhysicalPropertyExtractor;
 import org.sqsense.squared_sense_mc.client.observation.channels.VoxelPhysicalProperties;
 import org.sqsense.squared_sense_mc.client.observation.geometry.ObservationTransform;
+import org.sqsense.squared_sense_mc.client.observation.palette.BlockVocabulary;
 import org.sqsense.squared_sense_mc.client.observation.priority.BlockPriority;
 import org.sqsense.squared_sense_mc.client.observation.priority.BlockPriorityRegistry;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * High-performance block state and physical channel sampler for fixed 16x16x16 grids:
- * - Uses single BlockPos.Mutable to eliminate thousands of coordinate allocations.
- * - Reuses single cell frequency map and single accumulator across cells.
- * - Caches Block -> String registry IDs.
+ * High-performance block state, integer token ID, and physical channel sampler for fixed 16x16x16 grids:
  * - Task 7: Priority Downsampling (Hazards > Interactive > Liquids > Foliage > Solid > Air).
  * - Task 8: Multi-channel physical feature extraction (occupancy, passability, hazard, hardness, light, fluid flow).
+ * - Task 9: Integer Palette Mapping (frozen canonical integer IDs 0..N, with 0=Air, 1=Masked).
  */
 public class BlockSampler {
-    private static final Map<Block, String> BLOCK_ID_CACHE = new ConcurrentHashMap<>();
 
     public static SamplingResult sample(
         ClientWorld world,
@@ -64,14 +60,14 @@ public class BlockSampler {
                     int originX = playerX + dx;
                     int originZ = playerZ + dz;
 
-                    String selectedBlock;
+                    Block selectedBlock;
                     VoxelPhysicalProperties physicalProperties;
 
                     if (stride == 1) {
                         // Fast-path LOD 0: 1:1 direct lookup
                         mutablePos.set(originX, originY, originZ);
                         BlockState state = world.getBlockState(mutablePos);
-                        selectedBlock = getBlockId(state.getBlock());
+                        selectedBlock = state.getBlock();
                         physicalProperties = PhysicalPropertyExtractor.extractSingle(
                             state,
                             world,
@@ -110,13 +106,17 @@ public class BlockSampler {
                         );
                     }
 
-                    if (isAirId(selectedBlock)) {
+                    int blockId = BlockVocabulary.getId(selectedBlock);
+                    String blockName = BlockVocabulary.getName(blockId);
+
+                    if (blockId == BlockVocabulary.AIR_ID) {
                         airCells++;
                     }
-                    globalCounts.put(selectedBlock, globalCounts.getOrDefault(selectedBlock, 0) + 1);
+                    globalCounts.put(blockName, globalCounts.getOrDefault(blockName, 0) + 1);
 
                     JsonObject cellObj = new JsonObject();
-                    cellObj.addProperty("name", selectedBlock);
+                    cellObj.addProperty("id", blockId);
+                    cellObj.addProperty("name", blockName);
                     cellObj.addProperty("dx", dx);
                     cellObj.addProperty("dy", dy);
                     cellObj.addProperty("dz", dz);
@@ -135,7 +135,7 @@ public class BlockSampler {
         return new SamplingResult(xArray, globalCounts, totalCells, airCells, nonAirCells);
     }
 
-    private static String selectPriorityBlock(Map<Block, Integer> cellCounts, BlockPriority highestPriority) {
+    private static Block selectPriorityBlock(Map<Block, Integer> cellCounts, BlockPriority highestPriority) {
         Block bestBlock = null;
         int bestCount = -1;
 
@@ -152,8 +152,8 @@ public class BlockSampler {
                     if (bestBlock == null) {
                         bestBlock = block;
                     } else {
-                        String id = getBlockId(block);
-                        String bestId = getBlockId(bestBlock);
+                        String id = BlockVocabulary.getName(BlockVocabulary.getId(block));
+                        String bestId = BlockVocabulary.getName(BlockVocabulary.getId(bestBlock));
                         if (id.compareTo(bestId) < 0) {
                             bestBlock = block;
                         }
@@ -166,14 +166,6 @@ public class BlockSampler {
             bestBlock = Blocks.AIR;
         }
 
-        return getBlockId(bestBlock);
-    }
-
-    public static String getBlockId(Block block) {
-        return BLOCK_ID_CACHE.computeIfAbsent(block, b -> Registries.BLOCK.getId(b).toString());
-    }
-
-    public static boolean isAirId(String id) {
-        return "minecraft:air".equals(id) || "minecraft:cave_air".equals(id) || "minecraft:void_air".equals(id);
+        return bestBlock;
     }
 }
