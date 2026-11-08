@@ -6,6 +6,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.fluid.FluidState;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import org.sqsense.squared_sense_mc.client.observation.geometry.SnappedCardinal;
 import org.sqsense.squared_sense_mc.client.observation.priority.BlockPriority;
@@ -113,27 +114,72 @@ public final class PhysicalPropertyExtractor {
         return h;
     }
 
+    private static final Direction[] DIRECTIONS = Direction.values();
+
     /**
      * Resolves combined light level normalized to [0.0, 1.0].
+     * Fallback overload when neighborPos is not supplied.
      */
     public static float getNormalizedLight(ClientWorld world, BlockPos pos) {
         return world.getLightLevel(pos) / 15.0f;
     }
 
     /**
-     * Aggregates physical channels for a single cell (LOD 0 fast-path).
+     * Resolves combined light level normalized to [0.0, 1.0].
+     * For self-luminous or non-opaque blocks, queries the block's own position directly.
+     * For opaque full cubes (solid stone, wood, dirt, etc.), queries the maximum incident light
+     * across all adjacent non-opaque faces (identically to vanilla BlockModelRenderer),
+     * ensuring surface terrain properly reflects torches, daylight, and cave darkness.
+     */
+    public static float getNormalizedLight(
+        BlockState state,
+        ClientWorld world,
+        BlockPos pos,
+        BlockPos.Mutable neighborPos
+    ) {
+        if (state.hasEmissiveLighting(world, pos)) {
+            return 1.0f;
+        }
+
+        int maxLight = state.getLuminance();
+        if (!state.isOpaqueFullCube(world, pos)) {
+            maxLight = Math.max(maxLight, world.getLightLevel(pos));
+        } else {
+            int px = pos.getX();
+            int py = pos.getY();
+            int pz = pos.getZ();
+            for (Direction dir : DIRECTIONS) {
+                neighborPos.set(px + dir.getOffsetX(), py + dir.getOffsetY(), pz + dir.getOffsetZ());
+                BlockState neighborState = world.getBlockState(neighborPos);
+                if (!neighborState.isOpaqueFullCube(world, neighborPos)) {
+                    int nLight = world.getLightLevel(neighborPos);
+                    if (nLight > maxLight) {
+                        maxLight = nLight;
+                        if (maxLight >= 15) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return Math.min(15, maxLight) / 15.0f;
+    }
+
+    /**
+     * Aggregates physical channels for a single cell (LOD 0 fast-path) with zero-allocation neighbor buffer.
      */
     public static VoxelPhysicalProperties extractSingle(
         BlockState state,
         ClientWorld world,
         BlockPos pos,
+        BlockPos.Mutable neighborPos,
         SnappedCardinal cardinal
     ) {
         float occ = isSolid(state) ? 1.0f : 0.0f;
         float pass = getBlockPassability(state);
         float haz = isHazard(state) ? 1.0f : 0.0f;
         float hard = getHardness(state, world, pos);
-        float light = getNormalizedLight(world, pos);
+        float light = getNormalizedLight(state, world, pos, neighborPos);
 
         float fx = 0.0f;
         float fz = 0.0f;
@@ -145,6 +191,18 @@ public final class PhysicalPropertyExtractor {
         }
 
         return new VoxelPhysicalProperties(occ, pass, haz, hard, light, fx, fz, 1.0f);
+    }
+
+    /**
+     * Aggregates physical channels for a single cell (LOD 0 fast-path).
+     */
+    public static VoxelPhysicalProperties extractSingle(
+        BlockState state,
+        ClientWorld world,
+        BlockPos pos,
+        SnappedCardinal cardinal
+    ) {
+        return extractSingle(state, world, pos, new BlockPos.Mutable(), cardinal);
     }
 
     /**
@@ -177,6 +235,7 @@ public final class PhysicalPropertyExtractor {
      * Reusable accumulator to prevent object allocations during sub-volume aggregation.
      */
     public static final class Accumulator {
+        private final BlockPos.Mutable neighborPos = new BlockPos.Mutable();
         public int solidCount;
         public float passabilitySum;
         public boolean hasHazard;
@@ -206,7 +265,7 @@ public final class PhysicalPropertyExtractor {
                 hasHazard = true;
             }
             hardnessSum += getHardness(state, world, pos);
-            lightSum += getNormalizedLight(world, pos);
+            lightSum += getNormalizedLight(state, world, pos, neighborPos);
 
             FluidState fluid = state.getFluidState();
             if (!fluid.isEmpty()) {

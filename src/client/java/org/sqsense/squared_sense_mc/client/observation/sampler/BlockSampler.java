@@ -75,6 +75,7 @@ public class BlockSampler {
                             state,
                             world,
                             mutablePos,
+                            neighborPos,
                             transform.getCardinal()
                         );
                     } else {

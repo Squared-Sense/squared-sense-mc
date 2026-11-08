@@ -132,7 +132,7 @@ public class BinaryObservationWriter {
                         mutablePos.set(originX, originY, originZ);
                         BlockState state = world.getBlockState(mutablePos);
                         selectedBlock = state.getBlock();
-                        props = PhysicalPropertyExtractor.extractSingle(state, world, mutablePos, cardinal);
+                        props = PhysicalPropertyExtractor.extractSingle(state, world, mutablePos, neighborPos, cardinal);
                     } else {
                         cellCounts.clear();
                         accumulator.reset();

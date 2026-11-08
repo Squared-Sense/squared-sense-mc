@@ -618,12 +618,14 @@
 
         if (mode === 'light') {
             const light = Math.max(0.0, Math.min(1.0, vox.light || 0.0));
-            // 0 = Midnight Black/Navy, 1 = Warm Bright Sunlight
-            return tempColor.setRGB(
-                0.04 + light * 0.96,
-                0.04 + light * 0.92,
-                0.10 + light * 0.55
-            );
+            if (light <= 0.0) {
+                return tempColor.setRGB(0.06, 0.07, 0.12); // Pitch darkness (mob spawnable)
+            }
+            // Realistic Torch & Daylight gradient: ember orange -> warm yellow -> bright sun
+            const r = Math.min(1.0, 0.30 + light * 0.70);
+            const g = Math.min(1.0, 0.12 + light * 0.88);
+            const b = Math.min(1.0, 0.04 + Math.pow(light, 2.0) * 0.86);
+            return tempColor.setRGB(r, g, b);
         }
 
         if (mode === 'hardness') {
