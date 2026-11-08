@@ -38,7 +38,13 @@ Welcome to the internal documentation for **Squared Sense MC**, a client-side Mi
    - Hostility classification (`Monster`, active `Angerable`) and health extraction.
    - Dual-stream 3D CNN PyTorch integration guide.
 
-7. **[Observation Specification & Commands](OBSERVATION_SPEC.md)**
+7. **[Shared-Memory IPC & Streaming](SHARED_MEMORY_IPC.md)**
+   - High-throughput Memory-Mapped File (MMF) IPC bus (`/dev/shm` on Linux, `%TEMP%` on Windows).
+   - Lock-free Ping-Pong double-buffering for sub-millisecond zero-tear reads.
+   - Exact binary layout for $B_0..B_2$ and $E_0..E_2$ tensors.
+   - Zero-copy Python NumPy and PyTorch streaming.
+
+8. **[Observation Specification & Commands](OBSERVATION_SPEC.md)**
    - Fixed $16\times 16\times 16$ grid tensors across LODs 0, 1, and 2 (strides 1, 2, and 4).
    - Priority downsampling integration and tie-breaking algorithms.
    - In-game commands (`/observe`, `/obs`, `/squish`).

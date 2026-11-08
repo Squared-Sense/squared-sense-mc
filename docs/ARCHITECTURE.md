@@ -45,11 +45,18 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 │   │   ├── EntityClassifier.java         # Hostility (Monster, Angerable) & health extractor
 │   │   ├── EntitySamplingResult.java     # Record holding 16x16x16 entity tensor and aggregate counts
 │   │   └── EntityGridSampler.java        # Entity bounding box query and 3D tensor cell projection
+│   ├── ipc/
+│   │   ├── IpcBufferLayout.java          # Byte offsets and binary layout constants for MMF IPC
+│   │   ├── SharedMemoryChannel.java      # Cross-platform MMF lifecycle & Ping-Pong double-buffering
+│   │   └── BinaryObservationWriter.java  # Zero-allocation direct binary tensor writer for B0..B2 and E0..E2
 │   ├── sampler/
 │   │   ├── BlockSampler.java             # Zero-allocation block sampling and priority downsampling
 │   │   └── SamplingResult.java           # Record holding grid tensor array and cell statistics
 │   └── serialization/
 │       └── ObservationJsonSerializer.java# Metadata generation and async file writing
+├── bridge/
+│   ├── mc_ipc_layout.py                  # Matching binary IPC constants for Python
+│   └── mc_ipc_reader.py                  # Zero-copy NumPy/PyTorch MMF reader
 └── util/
     └── BlockInspector.java               # Block raycast utilities
 ```
@@ -70,6 +77,9 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 | `BlockVocabulary` | Static canonical vocabulary mapping Minecraft blocks to frozen integer token IDs (0=Air, 1=Masked, 2..N=Blocks) with $O(1)$ lookups and JSON export. |
 | `EntityClassifier` | Categorizes entities by hostility (`Monster`, active `Angerable`) and extracts health values. |
 | `EntityGridSampler` | Queries client world entities in the matching observation bounding box and projects them into $16\times 16\times 16$ entity tensor grids ($E_0, E_1, E_2$). |
+| `IpcBufferLayout` | Defines exact byte offsets, channel ordering, and memory alignment for the cross-platform MMF bus. |
+| `SharedMemoryChannel` | Cross-platform MMF channel manager implementing lock-free Ping-Pong double buffering with memory fences. |
+| `BinaryObservationWriter` | Samples and writes $B_0..B_2$ and $E_0..E_2$ binary tensors directly into `MappedByteBuffer` in under 0.2 ms with zero GC allocations. |
 | `BlockSampler` | Fast traversal of the client world using cached block IDs, mutable coordinate objects, and priority downsampling. |
 | `ObservationJsonSerializer` | Assembles egocentric JSON payloads and performs non-blocking I/O via `CompletableFuture.runAsync`. |
 | `ObserveCommand` | Brigadier command parsing, validation, and user feedback formatting. |
