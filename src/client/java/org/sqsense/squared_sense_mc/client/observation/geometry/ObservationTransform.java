@@ -1,5 +1,7 @@
 package org.sqsense.squared_sense_mc.client.observation.geometry;
 
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import org.sqsense.squared_sense_mc.client.observation.ObservationConfig;
 
 /**
@@ -85,6 +87,64 @@ public class ObservationTransform {
 
     public int getZLocalOffset(int gz) {
         return zLocalOffsets[gz];
+    }
+
+    /**
+     * Computes the world-space axis-aligned bounding box enclosing all cells in this transform.
+     */
+    public Box getWorldBoundingBox(BlockPos playerPos) {
+        int playerX = playerPos.getX();
+        int playerY = playerPos.getY();
+        int playerZ = playerPos.getZ();
+
+        int minWx = Integer.MAX_VALUE;
+        int minWz = Integer.MAX_VALUE;
+        int maxWx = Integer.MIN_VALUE;
+        int maxWz = Integer.MIN_VALUE;
+
+        int minLx = xLocalOffsets[0];
+        int maxLx = xLocalOffsets[ObservationConfig.GRID_SIZE - 1] + stride;
+        int minLz = zLocalOffsets[0];
+        int maxLz = zLocalOffsets[ObservationConfig.GRID_SIZE - 1] + stride;
+
+        int[] lxCorners = {minLx, maxLx};
+        int[] lzCorners = {minLz, maxLz};
+
+        for (int lx : lxCorners) {
+            for (int lz : lzCorners) {
+                int wx = playerX + cardinal.toWorldDeltaX(lx, lz);
+                int wz = playerZ + cardinal.toWorldDeltaZ(lx, lz);
+                minWx = Math.min(minWx, wx);
+                maxWx = Math.max(maxWx, wx);
+                minWz = Math.min(minWz, wz);
+                maxWz = Math.max(maxWz, wz);
+            }
+        }
+
+        int minWy = playerY + yLocalOffsets[0];
+        int maxWy = playerY + yLocalOffsets[ObservationConfig.GRID_SIZE - 1] + stride;
+
+        return new Box(minWx, minWy, minWz, maxWx, maxWy, maxWz);
+    }
+
+    public int getGridX(int worldDeltaX, int worldDeltaZ) {
+        int lx = cardinal.toLocalX(worldDeltaX, worldDeltaZ);
+        return Math.floorDiv(lx, stride) + ObservationConfig.PLAYER_LATERAL_INDEX;
+    }
+
+    public int getGridY(int worldDeltaY) {
+        return Math.floorDiv(worldDeltaY, stride) + footIndex;
+    }
+
+    public int getGridZ(int worldDeltaX, int worldDeltaZ) {
+        int lz = cardinal.toLocalZ(worldDeltaX, worldDeltaZ);
+        return Math.floorDiv(lz, stride) + ObservationConfig.PLAYER_FORWARD_INDEX;
+    }
+
+    public boolean isInGrid(int gx, int gy, int gz) {
+        return gx >= 0 && gx < ObservationConfig.GRID_SIZE &&
+               gy >= 0 && gy < ObservationConfig.GRID_SIZE &&
+               gz >= 0 && gz < ObservationConfig.GRID_SIZE;
     }
 }
 

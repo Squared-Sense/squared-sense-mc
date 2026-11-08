@@ -18,6 +18,8 @@ import net.minecraft.util.math.BlockPos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sqsense.squared_sense_mc.client.observation.ObservationConfig;
+import org.sqsense.squared_sense_mc.client.observation.entity.EntityGridSampler;
+import org.sqsense.squared_sense_mc.client.observation.entity.EntitySamplingResult;
 import org.sqsense.squared_sense_mc.client.observation.geometry.ObservationTransform;
 import org.sqsense.squared_sense_mc.client.observation.geometry.SnappedCardinal;
 import org.sqsense.squared_sense_mc.client.observation.geometry.YawHysteresisTracker;
@@ -109,8 +111,11 @@ public class ObserveCommand {
             stride
         );
 
-        // Sample 16x16x16 grid
-        SamplingResult result = BlockSampler.sample(world, playerPos, transform);
+        // Sample 16x16x16 block grid
+        SamplingResult blockResult = BlockSampler.sample(world, playerPos, transform);
+
+        // Sample 16x16x16 entity grid (Task 10)
+        EntitySamplingResult entityResult = EntityGridSampler.sample(world, player, playerPos, transform);
 
         // Build JSON representation
         JsonObject root = ObservationJsonSerializer.buildSingleLodJson(
@@ -118,7 +123,8 @@ public class ObserveCommand {
             playerPos,
             lod,
             transform,
-            result
+            blockResult,
+            entityResult
         );
 
         // Determine destination paths
@@ -144,9 +150,12 @@ public class ObserveCommand {
                 client.execute(() -> {
                     if (client.player != null) {
                         int span = ObservationConfig.GRID_SIZE * stride;
+                        String entitySummary = entityResult.totalEntities() > 0
+                            ? ", §d" + entityResult.totalEntities() + " entities§r [§c" + entityResult.hostileEntities() + " hostile§r]"
+                            : ", §70 entities§r";
                         MutableText msg = Text.literal("§a[Observe]§r Captured LOD §b" + lod + "§r ("
                             + cardinal.name() + " @ " + cardinal.getYawDegrees() + "°, pitch footIndex " + transform.getFootIndex()
-                            + ", stride " + stride + ", spans §e" + span + "x" + span + "x" + span + "m§r) to ")
+                            + ", stride " + stride + ", spans §e" + span + "x" + span + "x" + span + "m§r" + entitySummary + ") to ")
                             .append(Text.literal("§6" + targetFile.getFileName() + "§r").styled(style -> style
                                 .withUnderline(true)
                                 .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, targetFile.toAbsolutePath().toString()))
@@ -193,13 +202,20 @@ public class ObserveCommand {
         SamplingResult res1 = BlockSampler.sample(world, playerPos, transform1);
         SamplingResult res2 = BlockSampler.sample(world, playerPos, transform2);
 
+        EntitySamplingResult ent0 = EntityGridSampler.sample(world, player, playerPos, transform0);
+        EntitySamplingResult ent1 = EntityGridSampler.sample(world, player, playerPos, transform1);
+        EntitySamplingResult ent2 = EntityGridSampler.sample(world, player, playerPos, transform2);
+
         JsonObject root = ObservationJsonSerializer.buildAllLodsJson(
             world,
             playerPos,
             transform0,
             res0,
             res1,
-            res2
+            res2,
+            ent0,
+            ent1,
+            ent2
         );
 
         Path baseDir = client.runDirectory.toPath().resolve("observations");
@@ -220,9 +236,13 @@ public class ObserveCommand {
                 LOGGER.info("Observe: Saved all LODs to {}", savedPath.toAbsolutePath());
                 client.execute(() -> {
                     if (client.player != null) {
+                        int totalFound = ent2.totalEntities();
+                        String entitySummary = totalFound > 0
+                            ? ", §d" + totalFound + " entities in B2§r [§c" + ent2.hostileEntities() + " hostile§r]"
+                            : ", §70 entities§r";
                         MutableText msg = Text.literal("§a[Observe]§r Captured all 3 LODs ("
                             + cardinal.name() + " @ " + cardinal.getYawDegrees() + "°, pitch footIndex " + transform0.getFootIndex()
-                            + ") to ")
+                            + entitySummary + ") to ")
                             .append(Text.literal("§6" + targetFile.getFileName() + "§r").styled(style -> style
                                 .withUnderline(true)
                                 .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, targetFile.toAbsolutePath().toString()))

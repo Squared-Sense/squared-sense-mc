@@ -110,11 +110,63 @@
 
 ---
 
-### Phase 6: Serialization & Pipeline Optimization
+#### Phase 6: Continuous Tick Hook & Shared Memory Producer
 
-*Transition from debug logging to fast data transfer.*
+*Moving from the manual `/observe` command to an automatic background stream.*
 
-13. **Binary Buffer Serialization (Replacing JSON):**
-* JSON text generation is too slow for 20-tick RL loops.
-* Serialize the tensors into direct byte arrays (`ByteBuffer` in Java) storing flat float32 or uint8 arrays shaped `[channels, 16, 16, 16]`.
-* Keep `/squish` as a debug command for exporting JSON samples, but implement a direct socket, named pipe, or memory-mapped file bridge for sending raw buffers directly into PyTorch.
+1. **Tick Hook Cadence:**
+* Hook into `ServerTickEvents.END_SERVER_TICK` (or client tick equivalent).
+* Run the extractor every $N$ ticks (e.g., $N=1$ for full 20 Hz sync, or $N=2$ to $4$ to conserve CPU cycles).
+
+
+2. **Double-Buffered State Capture:**
+* Read the Minecraft world state on the main game thread during the tick hook.
+* Hand the raw block states off to an asynchronous worker thread that handles the LOD aggregation, coordinate translation, and channel encoding. This guarantees zero frame drops or lag spikes in the game loop.
+
+
+3. **Memory-Mapped File Writer:**
+* Initialize a mapped byte buffer pointing to `/dev/shm/mc_observation.bin` (or a OS-specific memory-backed temp file).
+* Write serialized tensors directly into RAM using a lightweight spinlock or sequence-number protocol (so consumers never read a half-written frame).
+
+
+
+---
+
+#### Phase 7: The Real-Time 3D Visualizer (Debug Monitor)
+
+*A standalone graphical viewport for live inspection and academic figures.*
+
+1. **Visualizer Tech Stack Selection:**
+* **Option A (Python / ModernGL or VisPy):** Reads the shared memory buffer directly into NumPy arrays; renders high-speed instanced voxel cubes using OpenGL shaders. Easiest to embed directly into your ML training codebase.
+* **Option B (Web-Based / Three.js + WebSocket/Local Bridge):** A lightweight local web app displaying an interactive OrbitControls canvas with a GUI panel. Extremely fast for building interactive slider controls, channel selectors, and toggle switches.
+
+
+2. **Core Visualizer Capabilities:**
+* **LOD Isolation & Blending:** Hotkeys (`1`, `2`, `3`) to view $B_0$, $B_1$, or $B_2$ individually, or render them nested inside one another with transparent boundary cages showing their exact $1\times, 2\times, 4\times$ spatial coverage.
+* **Channel Inspection Heatmaps:** A dropdown or shortcut to change voxel coloring:
+* *Palette Mode:* True Minecraft block colors.
+* *Passability Mode:* Green for walkable, blue for water, red for solid obstacles.
+* *Hazard Mode:* Bright glowing red for lava/fire/cactus, black for safe.
+* *Light Mode:* Grayscale gradient representing ambient and sky light.
+* *Occlusion Mode:* Shading visible surface blocks vs. masked/unseen voxels.
+
+
+* **Entity Radar Overlay:** Render wireframe red bounding boxes for cells in $E_n$ containing entities, with an arrow indicating the Facing Entity raycast line.
+* **Orientation Wireframe:** A visual cone projecting from the player's position indicating actual camera pitch/yaw versus the snapped cardinal grid alignment.
+* **Axial Slicing (Voxel Slicer):** Sliders along the $X, Y, Z$ planes to slice open the 3D volume and look inside tunnels, caves, and enclosed structures in real time.
+
+
+
+---
+
+#### Phase 8: Model Bridge & Multi-Task Benchmark Hook
+
+*Swapping the consumer from the visualizer to the learning agent.*
+
+1. **PyTorch Shared-Memory Dataset/Env Wrapper:**
+* Wrap the shared memory buffer in a standard Gym/Gymnasium environment in Python.
+* Convert the mapped byte arrays into zero-copy PyTorch tensors via `torch.frombuffer()`.
+
+
+2. **Simultaneous Debug Mode:**
+* Run the RL training loop on the primary GPU while the visualizer runs concurrently on your secondary monitor, sampling every $k$-th frame from shared memory so you can watch what the agent's spatial senses "see" in real time as policy updates occur.

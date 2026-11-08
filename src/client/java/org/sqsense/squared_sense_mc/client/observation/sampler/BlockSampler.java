@@ -11,6 +11,7 @@ import org.sqsense.squared_sense_mc.client.observation.ObservationConfig;
 import org.sqsense.squared_sense_mc.client.observation.channels.PhysicalPropertyExtractor;
 import org.sqsense.squared_sense_mc.client.observation.channels.VoxelPhysicalProperties;
 import org.sqsense.squared_sense_mc.client.observation.geometry.ObservationTransform;
+import org.sqsense.squared_sense_mc.client.observation.geometry.SnappedCardinal;
 import org.sqsense.squared_sense_mc.client.observation.palette.BlockVocabulary;
 import org.sqsense.squared_sense_mc.client.observation.priority.BlockPriority;
 import org.sqsense.squared_sense_mc.client.observation.priority.BlockPriorityRegistry;
@@ -80,10 +81,20 @@ public class BlockSampler {
                         accumulator.reset();
                         BlockPriority highestPriority = BlockPriority.AIR;
 
+                        int baseLx = transform.getXLocalOffset(gx);
+                        int baseLy = transform.getYLocalOffset(gy);
+                        int baseLz = transform.getZLocalOffset(gz);
+                        SnappedCardinal cardinal = transform.getCardinal();
+
                         for (int ox = 0; ox < stride; ox++) {
-                            for (int oy = 0; oy < stride; oy++) {
-                                for (int oz = 0; oz < stride; oz++) {
-                                    mutablePos.set(originX + ox, originY + oy, originZ + oz);
+                            int lx = baseLx + ox;
+                            for (int oz = 0; oz < stride; oz++) {
+                                int lz = baseLz + oz;
+                                int subOriginX = playerX + cardinal.toWorldDeltaX(lx, lz);
+                                int subOriginZ = playerZ + cardinal.toWorldDeltaZ(lx, lz);
+                                for (int oy = 0; oy < stride; oy++) {
+                                    int subOriginY = playerY + baseLy + oy;
+                                    mutablePos.set(subOriginX, subOriginY, subOriginZ);
                                     BlockState state = world.getBlockState(mutablePos);
                                     Block block = state.getBlock();
 

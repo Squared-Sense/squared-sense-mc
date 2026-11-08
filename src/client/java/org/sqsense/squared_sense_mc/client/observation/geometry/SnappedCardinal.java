@@ -57,5 +57,33 @@ public enum SnappedCardinal {
     public int toWorldDeltaZ(int xLocal, int zLocal) {
         return xLocal * rightZ + zLocal * forwardZ;
     }
+
+    /**
+     * Transforms world delta horizontal coordinates (dx, dz) into local lateral offset (xLocal).
+     */
+    public int toLocalX(int deltaX, int deltaZ) {
+        return deltaX * rightX + deltaZ * rightZ;
+    }
+
+    /**
+     * Transforms world delta horizontal coordinates (dx, dz) into local forward offset (zLocal).
+     */
+    public int toLocalZ(int deltaX, int deltaZ) {
+        return deltaX * forwardX + deltaZ * forwardZ;
+    }
+
+    /**
+     * Continuous floating-point variant for precise entity offsets.
+     */
+    public double toLocalX(double deltaX, double deltaZ) {
+        return deltaX * rightX + deltaZ * rightZ;
+    }
+
+    /**
+     * Continuous floating-point variant for precise entity offsets.
+     */
+    public double toLocalZ(double deltaX, double deltaZ) {
+        return deltaX * forwardX + deltaZ * forwardZ;
+    }
 }
 

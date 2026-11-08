@@ -40,6 +40,11 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 │   │   └── BlockPriorityRegistry.java    # Cached O(1) block-to-priority classifier with tag fallbacks
 │   ├── palette/
 │   │   └── BlockVocabulary.java          # Canonical alphabetical token ID dictionary & JSON exporter
+│   ├── entity/
+│   │   ├── EntityEntry.java              # Individual entity details record (type, health, hostile, local pos)
+│   │   ├── EntityClassifier.java         # Hostility (Monster, Angerable) & health extractor
+│   │   ├── EntitySamplingResult.java     # Record holding 16x16x16 entity tensor and aggregate counts
+│   │   └── EntityGridSampler.java        # Entity bounding box query and 3D tensor cell projection
 │   ├── sampler/
 │   │   ├── BlockSampler.java             # Zero-allocation block sampling and priority downsampling
 │   │   └── SamplingResult.java           # Record holding grid tensor array and cell statistics
@@ -63,6 +68,8 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 | `BlockPriority` | 6-tier priority hierarchy enum (HAZARD, INTERACTIVE, LIQUID, FOLIAGE, SOLID, AIR). |
 | `BlockPriorityRegistry` | High-speed singleton block-to-priority classifier with cached lookups and vanilla tag fallbacks. |
 | `BlockVocabulary` | Static canonical vocabulary mapping Minecraft blocks to frozen integer token IDs (0=Air, 1=Masked, 2..N=Blocks) with $O(1)$ lookups and JSON export. |
+| `EntityClassifier` | Categorizes entities by hostility (`Monster`, active `Angerable`) and extracts health values. |
+| `EntityGridSampler` | Queries client world entities in the matching observation bounding box and projects them into $16\times 16\times 16$ entity tensor grids ($E_0, E_1, E_2$). |
 | `BlockSampler` | Fast traversal of the client world using cached block IDs, mutable coordinate objects, and priority downsampling. |
 | `ObservationJsonSerializer` | Assembles egocentric JSON payloads and performs non-blocking I/O via `CompletableFuture.runAsync`. |
 | `ObserveCommand` | Brigadier command parsing, validation, and user feedback formatting. |

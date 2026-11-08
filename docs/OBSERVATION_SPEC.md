@@ -8,11 +8,13 @@ This document specifies the data formats, command interfaces, and integration pa
 
 Observations use a fixed $16\times 16\times 16$ tensor volume across 3 hierarchical LOD levels:
 
-| Level | Tensor Shape | Stride (Scale) | Physical World Coverage | Sub-Volume per Cell |
-|---|---|---|---|---|
-| **$B_0$ (LOD 0)** | $16\times 16\times 16$ | $1$ block | $16\times 16\times 16$ meters | $1\times 1\times 1$ ($1$ block) |
-| **$B_1$ (LOD 1)** | $16\times 16\times 16$ | $2$ blocks | $32\times 32\times 32$ meters | $2\times 2\times 2$ ($8$ blocks) |
-| **$B_2$ (LOD 2)** | $16\times 16\times 16$ | $4$ blocks | $64\times 64\times 64$ meters | $4\times 4\times 4$ ($64$ blocks) |
+| Level | Block Tensor ($B_n$) | Entity Tensor ($E_n$) | Stride (Scale) | Physical World Coverage | Sub-Volume per Cell |
+|---|---|---|---|---|---|
+| **LOD 0** | $B_0$ ($16\times 16\times 16$) | $E_0$ ($16\times 16\times 16$) | $1$ block | $16\times 16\times 16$ meters | $1\times 1\times 1$ ($1$ block) |
+| **LOD 1** | $B_1$ ($16\times 16\times 16$) | $E_1$ ($16\times 16\times 16$) | $2$ blocks | $32\times 32\times 32$ meters | $2\times 2\times 2$ ($8$ blocks) |
+| **LOD 2** | $B_2$ ($16\times 16\times 16$) | $E_2$ ($16\times 16\times 16$) | $4$ blocks | $64\times 64\times 64$ meters | $4\times 4\times 4$ ($64$ blocks) |
+
+Each entity tensor $E_n$ matches the spatial bounds, egocentric rotation, pitch translation, and cell resolution of block tensor $B_n$ 1:1, carrying 3 aggregated channels per cell: `entityCount`, `isHostile` (max-pooled), and `totalHealth`.
 
 ### Priority Downsampling Algorithm (Task 7)
 For downsampled levels ($B_1$ and $B_2$), naive majority voting is replaced with a **priority-tier hierarchy**. If a $2\times 2\times 2$ (LOD 1) or $4\times 4\times 4$ (LOD 2) volume contains critical blocks (e.g., a single lava block or chest), they are preserved in the categorical block ID channel even when in the minority:
@@ -108,6 +110,11 @@ Outputs to `squish_output/`.
       "lightLevel",
       "fluidFlow"
     ],
+    "entityChannels": [
+      "entityCount",
+      "isHostile",
+      "totalHealth"
+    ],
     "worldCoverage": {
       "sizeX": 16,
       "sizeY": 16,
@@ -133,6 +140,14 @@ Outputs to `squish_output/`.
         "minecraft:dirt": 396,
         "minecraft:air": 2500
       }
+    },
+    "entityStats": {
+      "totalEntities": 1,
+      "hostileEntities": 1,
+      "passiveEntities": 0,
+      "countsByType": {
+        "minecraft:zombie": 1
+      }
     }
   },
   "grid": [
@@ -152,6 +167,27 @@ Outputs to `squish_output/`.
         "fluidFlow": [0.0, 0.0]
       }
     }
+  ],
+  "entities": [
+    ... 16x16x16 3D array: entities[lateral_x][vertical_y][forward_z] ...
+    {
+      "dx": 0,
+      "dy": 0,
+      "dz": 3,
+      "entityCount": 1,
+      "isHostile": 1.0,
+      "totalHealth": 20.0,
+      "entities": [
+        {
+          "type": "minecraft:zombie",
+          "health": 20.0,
+          "hostile": true,
+          "localX": 0.12,
+          "localY": 0.0,
+          "localZ": 3.45
+        }
+      ]
+    }
   ]
 }
 ```
@@ -166,12 +202,21 @@ Outputs to `squish_output/`.
     "gridSize": 16,
     "coordinateFrame": "relative_player_feet_egocentric",
     "downsampling": "priority_hierarchy",
+    "entityChannels": ["entityCount", "isHostile", "totalHealth"],
+    "entityStats": {
+      "lod0": { "totalEntities": 1, "hostileEntities": 1, "passiveEntities": 0, ... },
+      "lod1": { "totalEntities": 3, "hostileEntities": 2, "passiveEntities": 1, ... },
+      "lod2": { "totalEntities": 8, "hostileEntities": 5, "passiveEntities": 3, ... }
+    },
     "camera": { ... },
     "playerWorldPos": { ... }
   },
-  "b0_lod0": [ ... 16x16x16 tensor ... ],
-  "b1_lod1": [ ... 16x16x16 tensor ... ],
-  "b2_lod2": [ ... 16x16x16 tensor ... ]
+  "b0_lod0": [ ... 16x16x16 block tensor ... ],
+  "b1_lod1": [ ... 16x16x16 block tensor ... ],
+  "b2_lod2": [ ... 16x16x16 block tensor ... ],
+  "e0_lod0": [ ... 16x16x16 entity tensor ... ],
+  "e1_lod1": [ ... 16x16x16 entity tensor ... ],
+  "e2_lod2": [ ... 16x16x16 entity tensor ... ]
 }
 ```
 
@@ -217,6 +262,12 @@ def load_latest_observation(obs_path="observations/obs_latest.json", vocab_path=
     # Access 1 block directly ahead of the player: gz = 3
     block_ahead = grid_b0[8][foot_idx][3]
     print(f"Block directly in front: {block_ahead['name']} (ID={block_ahead.get('id')}, dx={block_ahead['dx']}, dy={block_ahead['dy']}, dz={block_ahead['dz']})")
+
+    # Access entities in front of the player (Task 10)
+    entities_grid = data.get("e0_lod0", data.get("entities"))
+    if entities_grid:
+        ahead_entities = entities_grid[8][foot_idx][3]
+        print(f"Entities in front: count={ahead_entities['entityCount']}, hostile={ahead_entities['isHostile']}, health={ahead_entities['totalHealth']}")
 
     return data
 

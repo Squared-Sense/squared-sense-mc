@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import org.sqsense.squared_sense_mc.client.observation.ObservationConfig;
+import org.sqsense.squared_sense_mc.client.observation.entity.EntitySamplingResult;
 import org.sqsense.squared_sense_mc.client.observation.geometry.ObservationTransform;
 import org.sqsense.squared_sense_mc.client.observation.palette.BlockVocabulary;
 import org.sqsense.squared_sense_mc.client.observation.sampler.SamplingResult;
@@ -31,7 +32,8 @@ public class ObservationJsonSerializer {
         BlockPos playerPos,
         int lod,
         ObservationTransform transform,
-        SamplingResult result
+        SamplingResult blockResult,
+        EntitySamplingResult entityResult
     ) {
         JsonObject root = new JsonObject();
         JsonObject meta = buildCommonMetadata(world, playerPos, transform);
@@ -45,11 +47,15 @@ public class ObservationJsonSerializer {
         coverage.addProperty("sizeZ", span);
         meta.add("worldCoverage", coverage);
 
-        JsonObject stats = buildStatsJson(result, transform.getStride());
+        JsonObject stats = buildStatsJson(blockResult, transform.getStride());
         meta.add("stats", stats);
 
+        JsonObject entityStats = buildEntityStatsJson(entityResult);
+        meta.add("entityStats", entityStats);
+
         root.add("metadata", meta);
-        root.add("grid", result.gridArray());
+        root.add("grid", blockResult.gridArray());
+        root.add("entities", entityResult.gridArray());
         return root;
     }
 
@@ -59,15 +65,27 @@ public class ObservationJsonSerializer {
         ObservationTransform transform,
         SamplingResult res0,
         SamplingResult res1,
-        SamplingResult res2
+        SamplingResult res2,
+        EntitySamplingResult ent0,
+        EntitySamplingResult ent1,
+        EntitySamplingResult ent2
     ) {
         JsonObject root = new JsonObject();
         JsonObject meta = buildCommonMetadata(world, playerPos, transform);
+
+        JsonObject entityStats = new JsonObject();
+        entityStats.add("lod0", buildEntityStatsJson(ent0));
+        entityStats.add("lod1", buildEntityStatsJson(ent1));
+        entityStats.add("lod2", buildEntityStatsJson(ent2));
+        meta.add("entityStats", entityStats);
 
         root.add("metadata", meta);
         root.add("b0_lod0", res0.gridArray());
         root.add("b1_lod1", res1.gridArray());
         root.add("b2_lod2", res2.gridArray());
+        root.add("e0_lod0", ent0.gridArray());
+        root.add("e1_lod1", ent1.gridArray());
+        root.add("e2_lod2", ent2.gridArray());
         return root;
     }
 
@@ -97,6 +115,12 @@ public class ObservationJsonSerializer {
         channels.add("lightLevel");
         channels.add("fluidFlow");
         meta.add("channels", channels);
+
+        com.google.gson.JsonArray entityChannels = new com.google.gson.JsonArray();
+        entityChannels.add("entityCount");
+        entityChannels.add("isHostile");
+        entityChannels.add("totalHealth");
+        meta.add("entityChannels", entityChannels);
 
         JsonObject camera = new JsonObject();
         camera.addProperty("rawYaw", transform.getRawYaw());
@@ -129,6 +153,18 @@ public class ObservationJsonSerializer {
             .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
             .forEach(entry -> countsObj.addProperty(entry.getKey(), entry.getValue()));
         stats.add("blockCounts", countsObj);
+        return stats;
+    }
+
+    private static JsonObject buildEntityStatsJson(EntitySamplingResult result) {
+        JsonObject stats = new JsonObject();
+        stats.addProperty("totalEntities", result.totalEntities());
+        stats.addProperty("hostileEntities", result.hostileEntities());
+        stats.addProperty("passiveEntities", result.passiveEntities());
+
+        JsonObject countsByType = new JsonObject();
+        result.countsByType().forEach(countsByType::addProperty);
+        stats.add("countsByType", countsByType);
         return stats;
     }
 

@@ -32,7 +32,13 @@ Welcome to the internal documentation for **Squared Sense MC**, a client-side Mi
    - Dynamic caching, auto-export to `block_vocab.json`, and `/observe vocab` command.
    - PyTorch `nn.Embedding` integration with 1:1 synchronization.
 
-6. **[Observation Specification & Commands](OBSERVATION_SPEC.md)**
+6. **[Entity Observations & Grids](ENTITY_OBSERVATIONS.md)**
+   - Matching $16\times 16\times 16$ entity tensor grids ($E_0, E_1, E_2$) matching block grids $B_0, B_1, B_2$.
+   - Three channels per cell: `entityCount`, `isHostile` (max-pooled), and `totalHealth`.
+   - Hostility classification (`Monster`, active `Angerable`) and health extraction.
+   - Dual-stream 3D CNN PyTorch integration guide.
+
+7. **[Observation Specification & Commands](OBSERVATION_SPEC.md)**
    - Fixed $16\times 16\times 16$ grid tensors across LODs 0, 1, and 2 (strides 1, 2, and 4).
    - Priority downsampling integration and tie-breaking algorithms.
    - In-game commands (`/observe`, `/obs`, `/squish`).
