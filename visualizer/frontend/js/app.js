@@ -69,8 +69,8 @@
         uUseAtlas: { value: 1.0 }
     };
 
-    // Reusable Math / Temp Objects
-    const dummyObj = new THREE.Object3D();
+    // Reusable Math / Temp Objects (Direct matrix setting for zero-rotation grid anchoring)
+    const headDummy = new THREE.Object3D();
     const tempMatrix = new THREE.Matrix4();
     const tempColor = new THREE.Color();
     const raycaster = new THREE.Raycaster();
@@ -78,6 +78,7 @@
 
     // --- Initialization Entry Point ---
     async function init() {
+        console.log('[Visualizer] app.js v2.1 initialized: zero-rotation grid anchoring active.');
         initThreeScene();
         initPlayerAndHelpers();
         initInstancedMeshes();
@@ -630,16 +631,20 @@
         const uvAttr = mesh.geometry.getAttribute('instanceUVOffset');
         const uvArray = uvAttr ? uvAttr.array : null;
         let count = 0;
+        const s = stride * scaleMultiplier;
 
         for (let i = 0; i < voxels.length && count < MAX_INSTANCES; i++) {
             const vox = voxels[i];
             if (!isVoxelInSlice(vox)) continue;
 
-            // Set Position & Scale
-            dummyObj.position.set(vox.dx, vox.dy, vox.dz);
-            dummyObj.scale.set(stride * scaleMultiplier, stride * scaleMultiplier, stride * scaleMultiplier);
-            dummyObj.updateMatrix();
-            mesh.setMatrixAt(count, dummyObj.matrix);
+            // Direct Axis-Aligned Matrix: Strictly zero rotation, perfectly anchored to the coordinate grid
+            tempMatrix.set(
+                s, 0, 0, vox.dx,
+                0, s, 0, vox.dy,
+                0, 0, s, vox.dz,
+                0, 0, 0, 1
+            );
+            mesh.setMatrixAt(count, tempMatrix);
 
             // Set UV Tile Offset (Atlas Tile: tileX / 32, 1.0 - (tileY + 1) / 32)
             if (uvArray) {
@@ -754,11 +759,16 @@
             const item = entityList[i];
             const vox = item.vox;
             const stride = item.stride;
+            const s = stride * 1.05;
 
-            dummyObj.position.set(vox.dx, vox.dy, vox.dz);
-            dummyObj.scale.set(stride * 1.05, stride * 1.05, stride * 1.05);
-            dummyObj.updateMatrix();
-            meshEntities.setMatrixAt(count, dummyObj.matrix);
+            // Direct Axis-Aligned Matrix for Entity Wireframe Bounding Box
+            tempMatrix.set(
+                s, 0, 0, vox.dx,
+                0, s, 0, vox.dy,
+                0, 0, s, vox.dz,
+                0, 0, 0, 1
+            );
+            meshEntities.setMatrixAt(count, tempMatrix);
 
             // Hostile = Glowing Red (#ff3366), Passive = Bright Green (#39ff14)
             if (vox.hostile > 0) {
@@ -793,13 +803,20 @@
             // Head scale: 0.55m at stride 1
             const headSize = 0.55 * stride;
 
-            dummyObj.position.set(vox.dx, vox.dy, vox.dz);
-            dummyObj.scale.set(headSize, headSize, headSize);
+            headDummy.position.set(vox.dx, vox.dy, vox.dz);
+            headDummy.scale.set(headSize, headSize, headSize);
 
-            // Orient head towards camera horizontally
-            dummyObj.lookAt(camera.position.x, vox.dy, camera.position.z);
-            dummyObj.updateMatrix();
-            meshEntityHeads.setMatrixAt(count, dummyObj.matrix);
+            // Orient head towards camera horizontally:
+            const dxCam = camera.position.x - vox.dx;
+            const dzCam = camera.position.z - vox.dz;
+            if (Math.hypot(dxCam, dzCam) > 0.01) {
+                headDummy.lookAt(camera.position.x, vox.dy, camera.position.z);
+                headDummy.rotateY(Math.PI);
+            } else {
+                headDummy.rotation.set(0, 0, 0);
+            }
+            headDummy.updateMatrix();
+            meshEntityHeads.setMatrixAt(count, headDummy.matrix);
 
             // Determine UV tile from entity type
             let mobKey = (vox.entType || (vox.hostile > 0 ? 'zombie' : 'cow')).toLowerCase();
@@ -832,11 +849,19 @@
             const stride = item.stride;
             const headSize = 0.55 * stride;
 
-            dummyObj.position.set(vox.dx, vox.dy, vox.dz);
-            dummyObj.scale.set(headSize, headSize, headSize);
-            dummyObj.lookAt(camera.position.x, vox.dy, camera.position.z);
-            dummyObj.updateMatrix();
-            meshEntityHeads.setMatrixAt(i, dummyObj.matrix);
+            headDummy.position.set(vox.dx, vox.dy, vox.dz);
+            headDummy.scale.set(headSize, headSize, headSize);
+
+            const dxCam = camera.position.x - vox.dx;
+            const dzCam = camera.position.z - vox.dz;
+            if (Math.hypot(dxCam, dzCam) > 0.01) {
+                headDummy.lookAt(camera.position.x, vox.dy, camera.position.z);
+                headDummy.rotateY(Math.PI);
+            } else {
+                headDummy.rotation.set(0, 0, 0);
+            }
+            headDummy.updateMatrix();
+            meshEntityHeads.setMatrixAt(i, headDummy.matrix);
         }
         meshEntityHeads.instanceMatrix.needsUpdate = true;
     }

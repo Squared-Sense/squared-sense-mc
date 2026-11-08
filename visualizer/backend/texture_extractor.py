@@ -88,6 +88,42 @@ def get_preferred_texture_name(block_name: str, available_textures: Dict[str, st
     return None
 
 
+def apply_canonical_tint(img: Image.Image, block_name: str, tex_name: Optional[str]) -> Image.Image:
+    """
+    Applies authentic vanilla biome color tints to grayscale textures
+    such as grass blocks, leaves, foliage, water, and vines.
+    """
+    b = block_name.lower()
+    t = (tex_name or "").lower()
+
+    tint = None
+    if any(k in b or k in t for k in ["grass_block", "short_grass", "tall_grass", "fern"]):
+        tint = (121, 192, 90)  # Vanilla Plains Grass Green (#79c05a)
+    elif "birch_leaves" in b or "birch_leaves" in t:
+        tint = (128, 167, 85)  # Birch Leaves Green (#80a755)
+    elif "spruce_leaves" in b or "spruce_leaves" in t:
+        tint = (97, 153, 97)   # Spruce Leaves Green (#619961)
+    elif any(k in b or k in t for k in ["leaves", "vine"]):
+        tint = (72, 181, 24)   # Vanilla Foliage Green (#48b518)
+    elif any(k in b or k in t for k in ["water", "water_still", "water_flow"]):
+        tint = (63, 118, 228)  # Vanilla Water Blue (#3f76e4)
+    elif "sugar_cane" in b or "sugar_cane" in t:
+        tint = (149, 195, 68)  # Sugar Cane Green (#95c344)
+    elif "lily_pad" in b or "lily_pad" in t:
+        tint = (32, 128, 48)   # Lily Pad Green (#208030)
+    elif "redstone" in b and "dust" in b:
+        tint = (255, 30, 30)   # Redstone Red
+
+    if tint and img.mode in ("RGB", "RGBA"):
+        r, g, b_ch, a = img.split()
+        r = r.point(lambda p: int(p * tint[0] / 255.0))
+        g = g.point(lambda p: int(p * tint[1] / 255.0))
+        b_ch = b_ch.point(lambda p: int(p * tint[2] / 255.0))
+        return Image.merge("RGBA", (r, g, b_ch, a))
+
+    return img
+
+
 def build_texture_atlas(
     jar_path: str,
     output_dir: str,
@@ -200,6 +236,7 @@ def build_texture_atlas(
                         tile_img = raw_img
                     else:
                         tile_img = raw_img.resize((TILE_SIZE, TILE_SIZE), Image.NEAREST)
+                    tile_img = apply_canonical_tint(tile_img, block_name, tex_jar_path)
                     matched_count += 1
             except Exception:
                 tile_img = None

@@ -482,6 +482,13 @@ class VisualizerServer:
             def log_message(self, format, *args):
                 pass  # Suppress request spam
 
+            def end_headers(self):
+                # Aggressively disable browser caching for all visualizer frontend files and assets
+                self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+                self.send_header("Pragma", "no-cache")
+                self.send_header("Expires", "0")
+                super().end_headers()
+
             def do_GET(self):
                 # Enable CORS
                 path = self.path.split("?")[0]
@@ -492,7 +499,6 @@ class VisualizerServer:
                         self.send_response(200)
                         self.send_header("Content-Type", "image/png")
                         self.send_header("Access-Control-Allow-Origin", "*")
-                        self.send_header("Cache-Control", "no-cache")
                         self.end_headers()
                         with open(png_file, "rb") as f:
                             self.wfile.write(f.read())
@@ -515,7 +521,6 @@ class VisualizerServer:
                         self.send_response(200)
                         self.send_header("Content-Type", "image/png")
                         self.send_header("Access-Control-Allow-Origin", "*")
-                        self.send_header("Cache-Control", "no-cache")
                         self.end_headers()
                         with open(png_file, "rb") as f:
                             self.wfile.write(f.read())
