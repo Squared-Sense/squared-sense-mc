@@ -1,5 +1,11 @@
 # MCA Dataset & Pathfinding Pretraining Plan
 
+> **Note on Architecture & Repository Split**:
+> Per project architectural separation:
+> - **Squared Sence MC** (this repository): Houses exclusively the Fabric client Minecraft mod and the real-time 3D WebGL visualizer (`visualizer/`).
+> - **Squared-Sense-World-Model** (`../Squared-Sense-World-Model/`): Houses the offline environment (`env/minecraft_env.py`), MCA region data baker (`env/mca_baker.py`), physics kernel (`env/physics_kernel.py`), distance curriculum, PPO training pipeline (`eval/train_ppo_nav.py`), and real-time playback runner (`eval/run_inference.py`).
+> - The two communicate seamlessly via shared memory IPC (`squared_sense_mc.bin`) with `TELM` v1 inference telemetry.
+
 ## Overview
 
 This document outlines the offline data generation and pathfinding pretraining pipeline built on top of Chunky-generated Minecraft worlds. By baking `.mca` region files into memory-mapped NumPy arrays and serving observations in the exact schema expected by the model and 3D visualizer, we can run high-throughput parallel training and inspect single-episode inference runs on the fly.

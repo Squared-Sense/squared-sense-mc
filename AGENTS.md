@@ -39,9 +39,9 @@ Find your task intent in the table below and read **only** the designated primar
 | **Work on visibility & surface shell culling (Phase 5)** | [docs/BLOCK_PRIORITY_SYSTEM.md](/docs/BLOCK_PRIORITY_SYSTEM.md)<br>[docs/ARCHITECTURE.md](/docs/ARCHITECTURE.md) | [SurfaceShellFilter.java](/src/client/java/org/sqsense/squared_sense_mc/client/observation/visibility/SurfaceShellFilter.java)<br>[BinaryObservationWriter.java](/src/client/java/org/sqsense/squared_sense_mc/client/observation/ipc/BinaryObservationWriter.java) | Culls buried underworld blocks completely enclosed by solid cubes to ID 1 (`special:masked`) with `visibility = 0.0`. Toggleable via `/observe visibility`. |
 | **Work on shared memory IPC & binary layout** | [docs/SHARED_MEMORY_IPC.md](/docs/SHARED_MEMORY_IPC.md) | [IpcBufferLayout.java](/src/client/java/org/sqsense/squared_sense_mc/client/observation/ipc/IpcBufferLayout.java)<br>[SharedMemoryChannel.java](/src/client/java/org/sqsense/squared_sense_mc/client/observation/ipc/SharedMemoryChannel.java)<br>[BinaryObservationWriter.java](/src/client/java/org/sqsense/squared_sense_mc/client/observation/ipc/BinaryObservationWriter.java) | Protocol v3, lock-free Ping-Pong double buffering, 1.04 MB shared buffer (`squared_sense_mc.bin`). Sub-millisecond zero-tear updates. |
 | **Consume observations in Python / RL model bridge** | [docs/SHARED_MEMORY_IPC.md#python-consumption](/docs/SHARED_MEMORY_IPC.md) | [mc_ipc_layout.py](/bridge/mc_ipc_layout.py)<br>[mc_ipc_reader.py](/bridge/mc_ipc_reader.py) | Python zero-copy reader using `mmap` and `numpy.frombuffer()`. Returns structured dicts of NumPy tensors for Gym/PyTorch. |
-| **Interface with World Model & Training Repo** | [docs/WORLD_MODEL_CONTRACTS.md](/docs/WORLD_MODEL_CONTRACTS.md) | [offline/adapter.py](/offline/adapter.py)<br>[offline/pathfinding_env.py](/offline/pathfinding_env.py) | 16-channel continuous tensor contract, channel-last layout, 12-action space, JAX/Flax NNX compatibility. |
-| **Work on offline RL training & parallel workers (Phase 4)** | [docs/WORLD_MODEL_CONTRACTS.md](/docs/WORLD_MODEL_CONTRACTS.md)<br>[plan.md](/plan.md) | [offline/vector_env.py](/offline/vector_env.py)<br>[offline/train_ppo.py](/offline/train_ppo.py) | Vectorized parallel environments (Async/Sync), Siamese Conv3D Actor-Critic, GAE, PPO loss, BC warm-start, checkpointing. |
-| **Work on single inference & visualizer telemetry (Phase 5)** | [docs/VISUALIZER.md](/docs/VISUALIZER.md)<br>[plan.md](/plan.md) | [offline/run_inference.py](/offline/run_inference.py)<br>[offline/ipc_telemetry.py](/offline/ipc_telemetry.py) | CLI single-episode playback runner, MMF inference telemetry header, 3D target beacon, trajectory lines, and HUD telemetry panel. |
+| **Interface with World Model & Training Repo** | [docs/WORLD_MODEL_CONTRACTS.md](/docs/WORLD_MODEL_CONTRACTS.md) | [docs/WORLD_MODEL_CONTRACTS.md](/docs/WORLD_MODEL_CONTRACTS.md) | 16-channel continuous tensor contract, channel-last layout, 12-action space, JAX/Flax NNX compatibility in companion repo. |
+| **Work on offline RL training & parallel workers** | [docs/WORLD_MODEL_CONTRACTS.md](/docs/WORLD_MODEL_CONTRACTS.md)<br>[plan.md](/plan.md) | `../Squared-Sense-World-Model/eval/train_ppo_nav.py`<br>`../Squared-Sense-World-Model/env/` | Relocated to companion repo: Real MinecraftNavEnv, SpatialJEPA + ActorCriticHead, GAE, PPO loss, BC warm-start. |
+| **Work on single inference & visualizer telemetry** | [docs/VISUALIZER.md](/docs/VISUALIZER.md)<br>[plan.md](/plan.md) | `../Squared-Sense-World-Model/eval/run_inference.py`<br>[visualizer/backend/visualizer_server.py](/visualizer/backend/visualizer_server.py) | Single-episode playback runner streaming live MMF frames + TELM v1 inference telemetry directly into the 3D WebGL visualizer. |
 | **Work on 3D real-time visualizer** | [docs/VISUALIZER.md](/docs/VISUALIZER.md) | [visualizer_server.py](/visualizer/backend/visualizer_server.py)<br>[app.js](/visualizer/frontend/js/app.js)<br>[index.html](/visualizer/frontend/index.html) | Standalone WebGL viewer (Three.js instanced rendering), 512x512 official texture atlas, heatmaps, entity boxes, axial slice planes. |
 | **Inspect in-game commands & manual export** | [docs/OBSERVATION_SPEC.md](/docs/OBSERVATION_SPEC.md) | [ObserveCommand.java](/src/client/java/org/sqsense/squared_sense_mc/client/command/ObserveCommand.java)<br>[SquishCommand.java](/src/client/java/org/sqsense/squared_sense_mc/client/command/SquishCommand.java) | Command dispatcher for `/observe [all|0|1|2|stream|visibility|vocab]` and `/squish <size>`. Asynchronous JSON serializer. |
 | **Check project roadmap, completed phases & pending tasks** | [todo.md](/todo.md) | [todo.md](/todo.md) | Tracks Phases 1 through 8 from geometry anchoring to RL Gym benchmark hooks. |
@@ -124,22 +124,7 @@ Squared Sence MC/
 │   ├── OBSERVATION_SPEC.md                 # Observation schemas and command syntax
 │   ├── VISUALIZER.md                       # Real-time WebGL 3D diagnostic visualizer
 │   └── WORLD_MODEL_CONTRACTS.md            # Companion World Model 16-channel & JAX contracts
-├── offline/                                # Offline data baking & pretraining pipeline
-│   ├── palette.py                          # BlockVocabulary & physical property LUTs
-│   ├── mca_baker.py                        # Chunk decompression & memmap baker
-│   ├── spawn_indexer.py                    # 60/25/15 terrain spawn sampling
-│   ├── lod_extractor.py                    # B0, B1, B2 coordinate slicing & downsampling
-│   ├── physics_kernel.py                   # Discrete movement, 1-block step-up & fall physics
-│   ├── bfs_target.py                       # Bounded 3D BFS within B2
-│   ├── curriculum.py                       # Distance curriculum scheduler
-│   ├── pathfinding_env.py                  # Gymnasium pathfinding environment
-│   ├── adapter.py                          # 16-channel World Model tensor & state adapter
-│   ├── vector_env.py                       # Vectorized parallel environments (Sync/Async)
-│   ├── train_ppo.py                        # Parallel PPO training engine & BC warm-start
-│   ├── ipc_telemetry.py                    # Binary inference telemetry header serializer
-│   ├── ipc_emitter.py                      # Double-buffered MMF writer with telemetry
-│   └── run_inference.py                    # Single-inference playback CLI runner
-├── bridge/                                 # Python / ML bridge
+├── bridge/                                 # Python / ML IPC bridge
 │   ├── mc_ipc_layout.py                    # Binary IPC layout constants for Python
 │   └── mc_ipc_reader.py                    # Zero-copy NumPy/PyTorch MMF reader
 ├── visualizer/                             # 3D Visualizer application
@@ -148,7 +133,7 @@ Squared Sence MC/
 │   │   ├── texture_extractor.py            # Texture atlas stitcher from client JAR
 │   │   └── assets/                         # Texture atlas (512x512) and UV mappings
 │   └── frontend/
-│       ├── index.html                      # WebGL viewer HUD
+│       ├── index.html                      # WebGL viewer HUD & telemetry panel
 │       ├── css/style.css                   # Cyberpunk HUD styling
 │       └── js/app.js                       # Three.js hardware instancing and telemetry
 └── src/client/java/org/sqsense/squared_sense_mc/client/

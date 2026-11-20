@@ -9,6 +9,8 @@ build
 
 bin
 
+data
+
 # IntelliJ
 out/
 .idea
