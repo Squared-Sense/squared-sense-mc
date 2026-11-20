@@ -23,3 +23,10 @@ hs_err_pid*
 run
 
 __pycache__/
+*.pyc
+
+# Offline baked datasets and test artifacts
+baked_regions/
+baked_regions_test/
+*.mmap
+*.bin

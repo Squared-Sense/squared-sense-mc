@@ -2,6 +2,8 @@
 
 > **Notice for AI Agents**: This file serves as the primary router for AI agents working in the **Squared Sense MC** repository. Instead of reading all documents into your context window and causing token bloat, consult the **[Agent Intent Routing Matrix](#agent-intent-routing-matrix)** below to pinpoint the exact specification and source files needed for your specific task.
 
+> Also check [README.md](/DOCS/README.md)
+
 ---
 
 ## Critical System Invariants & Ground Rules
