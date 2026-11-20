@@ -80,16 +80,36 @@ class MinecraftIpcEmitter:
                 pass
             self.file = None
 
-    def emit_observation(self, obs: Dict, game_tick: int = 0):
+    def emit_observation(self, obs: Dict, game_tick: int = 0, telemetry_bytes: Optional[bytes] = None):
         """
         Writes an observation dictionary into the inactive buffer slot and flips the active slot.
+        Optionally writes Inference Telemetry into Header Page 0 (offset 256).
         """
         if self.mmap_obj is None:
             self.open()
 
-        header_data = obs["header"]
-        blocks = obs["blocks"]
-        entities = obs["entities"]
+        header_data = obs.get("header", {
+            "playerPos": obs.get("player_pos", (0.0, 0.0, 0.0)),
+            "cardinal": obs.get("cardinal", "SOUTH"),
+            "cameraYaw": 0.0,
+            "cameraPitch": 0.0,
+            "snappedYaw": 0.0,
+            "footIndex": 6,
+            "strides": (1, 2, 4),
+            "vocabSize": 1059,
+            "visibilityFilter": True
+        })
+        blocks = obs.get("blocks", obs)
+        entities = obs.get("entities", {
+            "lod0": {"entity_count": np.zeros((16, 16, 16), dtype=np.uint8), "entity_type_id": np.zeros((16, 16, 16), dtype=np.uint8), "is_hostile": np.zeros((16, 16, 16), dtype=np.float32), "total_health": np.zeros((16, 16, 16), dtype=np.float32)},
+            "lod1": {"entity_count": np.zeros((16, 16, 16), dtype=np.uint8), "entity_type_id": np.zeros((16, 16, 16), dtype=np.uint8), "is_hostile": np.zeros((16, 16, 16), dtype=np.float32), "total_health": np.zeros((16, 16, 16), dtype=np.float32)},
+            "lod2": {"entity_count": np.zeros((16, 16, 16), dtype=np.uint8), "entity_type_id": np.zeros((16, 16, 16), dtype=np.uint8), "is_hostile": np.zeros((16, 16, 16), dtype=np.float32), "total_health": np.zeros((16, 16, 16), dtype=np.float32)}
+        })
+
+        # Write inference telemetry if present
+        if telemetry_bytes:
+            self.mmap_obj.seek(layout.HEADER_OFFSET + 256)
+            self.mmap_obj.write(telemetry_bytes)
 
         # 1. Select inactive slot for writing
         target_slot = 1 - self.active_slot

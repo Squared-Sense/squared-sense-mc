@@ -60,6 +60,21 @@ src/client/java/org/sqsense/squared_sense_mc/client/
 bridge/
 ├── mc_ipc_layout.py                      # Matching binary IPC constants for Python
 └── mc_ipc_reader.py                      # Zero-copy NumPy/PyTorch MMF reader
+offline/
+├── palette.py                            # BlockVocabulary & physical property lookup tables
+├── mca_baker.py                          # Chunk decompression & zero-copy memmap baker
+├── spawn_indexer.py                      # 60/25/15 terrain spawn sampling
+├── lod_extractor.py                      # B0, B1, B2 coordinate slicing & downsampling
+├── physics_kernel.py                     # Discrete movement, 1-block step-up & fall physics
+├── bfs_target.py                         # Bounded 3D BFS within B2
+├── curriculum.py                         # Distance curriculum scheduler
+├── pathfinding_env.py                    # Gymnasium pathfinding environment
+├── adapter.py                            # 16-channel World Model tensor & state adapter
+├── vector_env.py                         # Vectorized parallel environments (Sync/Async)
+├── train_ppo.py                          # Parallel PPO training engine & BC warm-start
+├── ipc_telemetry.py                      # Binary inference telemetry header serializer
+├── ipc_emitter.py                        # Double-buffered MMF writer with telemetry
+└── run_inference.py                      # Single-inference playback CLI runner
 visualizer/
 ├── backend/
 │   ├── assets/
@@ -99,9 +114,15 @@ visualizer/
 | `BlockSampler` | Fast traversal of the client world using cached block IDs, mutable coordinate objects, and priority downsampling. |
 | `ObservationJsonSerializer` | Assembles egocentric JSON payloads and performs non-blocking I/O via `CompletableFuture.runAsync`. |
 | `ObserveCommand` | Brigadier command parsing, validation, and user feedback formatting. |
+| `ObservationAdapter` | Cross-repo adapter translating raw block IDs + physical channels to the 16-channel continuous tensor `(3, 16, 16, 16, 16)`, 12D state vector, and 3D goal vector. |
+| `AdaptedPathfindingWrapper` | Gymnasium wrapper converting `MinecraftPathfindingEnv` observations to the 16-channel schema for RL training. |
+| `make_vector_env` | High-throughput parallel environment factory (4–32 workers) supporting `SyncVectorEnv` and `AsyncVectorEnv` with shared memmap storage. |
+| `VoxelActorCritic` | Siamese 3D CNN encoder policy and critic architecture with action masking and shared spatial trunks. |
+| `InferenceTelemetry` | Extended binary telemetry serializer (`TELM` v1) streaming goal metrics, breadcrumbs, BFS paths, and Critic values through MMF Page 0. |
+| `run_inference.py` | Standalone interactive CLI runner executing checkpointed policies and streaming live 3D visualizer frames. |
 | `texture_extractor.py` | Compiles 1,012 official 16x16 block textures from the Minecraft JAR into a 512x512 atlas and JSON UV map. |
 | `visualizer_server.py` | Bridges MMF IPC to the browser, serving static assets on HTTP :8765 and live frames on WebSocket :8766. |
-| `app.js` | WebGL Three.js renderer featuring instanced official textures, multi-LOD overlap, physical channel heatmaps, and entity overlays. |
+| `app.js` | WebGL Three.js renderer featuring instanced official textures, multi-LOD overlap, physical channel heatmaps, entity overlays, 3D target beacon, and telemetry graphs. |
 
 ---
 

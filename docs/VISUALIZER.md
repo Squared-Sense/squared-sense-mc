@@ -82,7 +82,7 @@ Cells containing entities are rendered with both bounding volumes and authentic 
   - **Hostile Mobs**: Pulsing red wireframe box (`#ff3366`) animated at 6 Hz.
 - **3D Mob Preview Heads**:
   - Centered inside the cell, an instanced 3D head cube ($0.55\text{m} \times 0.55\text{m} \times 0.55\text{m}$) renders the authentic face texture extracted directly from the Minecraft JAR (e.g. Zombie, Skeleton, Creeper, Spider, Enderman, Cow, Pig, Sheep, Villager, Steve).
-  - Built from [`entity_heads.png`](file:///c:/Users/Krishna/Projects/Squared%20Sence%20MC/visualizer/backend/assets/entity_heads.png) and [`entity_heads.json`](file:///c:/Users/Krishna/Projects/Squared%20Sence%20MC/visualizer/backend/assets/entity_heads.json).
+  - Built from [`entity_heads.png`](/visualizer/backend/assets/entity_heads.png) and [`entity_heads.json`](/visualizer/backend/assets/entity_heads.json).
   - **Camera-Oriented Facing**: The head cube rotates smoothly around its vertical axis to face the camera, ensuring the mob face is clearly recognizable from any viewing angle.
   - Entity count, hostility status, and health pool are inspected dynamically on hover.
 
@@ -105,6 +105,20 @@ Hovering over any voxel in the 3D viewport casts a hardware raycast, displaying 
 - Grid indices $(gx, gy, gz)$ and egocentric metric offsets $(\Delta x, \Delta y, \Delta z)$.
 - Channel values: Occupancy, Passability, Hazard, Hardness, Light Level.
 - Entity information: count, hostility status, and combined health pool.
+
+### 8. RL Pathfinding & Inference Telemetry (Phase 5)
+
+When running agent playback via `offline/run_inference.py`, the backend streams extended `TELM` v1 inference metrics alongside voxel grids:
+- **3D Target Beacon & Light Pillar**:
+  - A glowing amber target cube ($1.05\text{m}^3$) highlights the agent's destination.
+  - A 24-meter vertical beacon light pillar with animated pulse effect marks long-range goals visible across terrain.
+- **Dynamic 3D Trajectory Polylines**:
+  - **Agent Breadcrumbs (Cyan `#00d2ff`)**: Real-time line strip tracing up to 64 past steps traversed by the policy.
+  - **Reference BFS Path (Gold `#ffb000`)**: Dashed reference path computed by the 3D BFS pathfinder showing the optimal theoretical trajectory.
+- **Sidebar HUD Telemetry Panel**:
+  - **Metrics Grid**: Real-time target Euclidean distance ($m$), step count, cumulative return, step reward, Critic value estimate $V(s)$, and inference FPS.
+  - **Action Probability Distribution**: Live horizontal bar charts for all 12 navigation actions (`NOOP`, `FORWARD`, `BACK`, `LEFT`, `RIGHT`, `FORWARD_JUMP`, `FORWARD_RIGHT`, `FORWARD_LEFT`, `TURN_LEFT`, `TURN_RIGHT`, `PITCH_UP`, `PITCH_DOWN`), dynamically highlighting the selected action.
+  - **Target World Delta**: Real-time relative coordinates $(\Delta x, \Delta y, \Delta z)$ to the navigation goal.
 
 ---
 
@@ -161,8 +175,9 @@ http://localhost:8765
 
 The status pill in the top header will transition to **LIVE STREAM** (green).
 
-### Step 3: Stream from Minecraft
+### Step 3: Stream from Minecraft or Offline Policy Playback
 
+#### Option A: Live Minecraft Client
 In the Minecraft client, start live streaming at the desired tick interval:
 
 ```
@@ -170,8 +185,20 @@ In the Minecraft client, start live streaming at the desired tick interval:
 ```
 
 *(Or alias `/obs stream start 2`). Default cadence is every 2 ticks (10 Hz).*
-
 As the player moves, turns, or digs, the 3D viewport on your second monitor will mirror the egocentric observation slice in real time.
+
+#### Option B: Offline Policy Playback & Inference Runner
+To stream offline RL model decisions, target beacons, and trajectory lines directly into the visualizer:
+
+```powershell
+.\.venv\Scripts\python.exe offline/run_inference.py --checkpoint checkpoints/ppo_step_50000.pt --stage 3 --fps 10
+```
+
+Interactive controls:
+- **`[SPACE]`**: Pause / resume agent stepping.
+- **`[N]`**: Advance single step while paused.
+- **`[R]`**: Reset to a new random spawn and target.
+- **`[Q]`**: Quit runner cleanly.
 
 ---
 

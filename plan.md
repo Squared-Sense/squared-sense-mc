@@ -64,20 +64,20 @@ This document outlines the offline data generation and pathfinding pretraining p
 ### Phase 4: Parallel Training Pipeline
 *Run fast, parallelized training jobs directly against the memmap worlds.*
 
-* [ ] **Vectorized Parallel Workers:** Wrap the Gymnasium environment in `AsyncVectorEnv` / `SubprocVecEnv` (8–32 workers) all reading from the same shared read-only `.memmap` files with minimal RAM overhead.
-* [ ] **Training Loop Integration:** Connect the parallel environments to your RL training script (e.g., PPO) and optional masked-voxel spatial pretraining sampling random slices from the same memmap files.
-* [ ] **Checkpointing & Logging:** Save periodic checkpoints alongside training metrics (policy/value loss, entropy, episode success rate, and path efficiency ratio $\frac{\text{actual steps}}{L_{\text{BFS}}}$).
+* [x] **Vectorized Parallel Workers:** Wrap the Gymnasium environment in `AsyncVectorEnv` / `SubprocVecEnv` (8–32 workers) all reading from the same shared read-only `.memmap` files with minimal RAM overhead.
+* [x] **Training Loop Integration:** Connect the parallel environments to your RL training script (e.g., PPO) and optional masked-voxel spatial pretraining sampling random slices from the same memmap files.
+* [x] **Checkpointing & Logging:** Save periodic checkpoints alongside training metrics (policy/value loss, entropy, episode success rate, and path efficiency ratio $\frac{\text{actual steps}}{L_{\text{BFS}}}$).
 
 ### Phase 5: Single-Inference Mode & Visualizer Inspection Panel
 *Inspect trained checkpoints step-by-step in real time.*
 
-* [ ] **IPC Telemetry Extension:** Extend the data blob sent to the visualizer with an optional **Inference Telemetry Header**:
-  * [ ] Target block coordinates $(\Delta x, \Delta y, \Delta z)$.
-  * [ ] Agent breadcrumb trail (visited positions) and optional BFS optimal reference path.
-  * [ ] Live step metrics: step reward, cumulative episode return, remaining distance, Critic estimate $V(s)$, and action probabilities.
-  * [ ] Checkpoint metadata: training step count and historical policy/value loss values from the loaded checkpoint.
-* [ ] **Single-Inference Runner Script:** Create a CLI script that loads a checkpoint, runs a single pathfinding episode at a configurable playback speed (with pause and step-forward controls), and streams the live LOD + telemetry blobs to the visualizer.
-* [ ] **Visualizer Pathfinding Panel:**
-  * [ ] **3D Target Highlight:** Render a distinct glowing wireframe/beacon at the target block's coordinates.
-  * [ ] **3D Trajectory Line:** Draw a polyline tracing the agent's path from spawn (with a toggle to compare against the optimal BFS path).
-  * [ ] **Live Metrics & Loss HUD:** Add a panel displaying step count, distance-to-target, step reward, Critic $V(s)$, action probabilities, and the checkpoint's training/value loss curve.
+* [x] **IPC Telemetry Extension:** Extend the data blob sent to the visualizer with an optional **Inference Telemetry Header**:
+  * [x] Target block coordinates $(\Delta x, \Delta y, \Delta z)$.
+  * [x] Agent breadcrumb trail (visited positions) and optional BFS optimal reference path.
+  * [x] Live step metrics: step reward, cumulative episode return, remaining distance, Critic estimate $V(s)$, and action probabilities.
+  * [x] Checkpoint metadata: training step count and historical policy/value loss values from the loaded checkpoint.
+* [x] **Single-Inference Runner Script:** Create a CLI script that loads a checkpoint, runs a single pathfinding episode at a configurable playback speed (with pause and step-forward controls), and streams the live LOD + telemetry blobs to the visualizer.
+* [x] **Visualizer Pathfinding Panel:**
+  * [x] **3D Target Highlight:** Render a distinct glowing wireframe/beacon at the target block's coordinates.
+  * [x] **3D Trajectory Line:** Draw a polyline tracing the agent's path from spawn (with a toggle to compare against the optimal BFS path).
+  * [x] **Live Metrics & Loss HUD:** Add a panel displaying step count, distance-to-target, step reward, Critic $V(s)$, action probabilities, and the checkpoint's training/value loss curve.

@@ -166,3 +166,45 @@ entity_count_tensor = torch.from_numpy(e0["entity_count"])
 print(f"Tick {header['gameTick']} | Occupancy shape: {occupancy_tensor.shape}")
 ```
 
+---
+
+## 7. Inference Telemetry Extension (Phase 5, Page 0, Offset 256)
+
+To support single-episode RL playback inspection in the 3D WebGL visualizer without altering base Protocol v3 payload offsets, **Page 0 (Header Page, 4096 bytes)** allocates byte offset `256` for the **Inference Telemetry Block**:
+
+- **Telemetry Magic**: `0x54454C4D` (`"TELM"` uint32)
+- **Telemetry Version**: `1` (uint32)
+- **Base Offset**: `OFF_TELEMETRY = 256`
+
+### Binary Telemetry Layout
+
+| Offset in Page 0 | Type | Field Name | Description |
+|---|---|---|---|
+| `+0x00` | `uint32` | `telemetryMagic` | Magic identifier: `0x54454C4D` (`"TELM"`) |
+| `+0x04` | `uint32` | `telemetryVersion` | Protocol version (`1`) |
+| `+0x08` | `uint32` | `isEnabled` | `1` when telemetry is actively emitted, `0` for normal live mod streams |
+| `+0x0C` | `uint32` | `stepCount` | Current episode step counter |
+| `+0x10` | `double[3]` | `targetWorldPos` | 3D target coordinates in world space `[x, y, z]` |
+| `+0x28` | `float[3]` | `targetRelDelta` | Relative delta from player to target in world coordinates `[dx, dy, dz]` |
+| `+0x34` | `float` | `remainingDistance` | Euclidean distance from player to target block (meters) |
+| `+0x38` | `float` | `stepReward` | Reward received on the current step |
+| `+0x3C` | `float` | `episodeReturn` | Cumulative episode return |
+| `+0x40` | `float` | `criticValue` | Actor-Critic state value estimate $V(s)$ |
+| `+0x44` | `uint32` | `numActions` | Action space size (e.g. 6 or 12) |
+| `+0x48` | `float[12]` | `actionProbs` | Probability distribution across actions |
+| `+0x78` | `int32` | `chosenAction` | Discrete action chosen for execution |
+| `+0x7C` | `uint32` | `lBfs` | Optimal BFS reference path length |
+| `+0x80` | `uint32` | `trailCount` | Visited breadcrumb coordinate count ($\le 64$) |
+| `+0x84` | `uint32` | `bfsCount` | Optimal BFS trajectory waypoint count ($\le 64$) |
+| `+0x88` | `uint32` | `checkpointSteps` | Checkpoint training step counter |
+| `+0x8C` | `float` | `checkpointPolicyLoss` | Latest policy loss from loaded checkpoint |
+| `+0x90` | `float` | `checkpointValueLoss` | Latest value loss from loaded checkpoint |
+| `+0x94` | `float` | `checkpointSuccessRate`| Historical training success rate $[0.0, 1.0]$ |
+| `+0x98` | `int16[64][3]`| `trailCoords` | Breadcrumb relative offsets $(\Delta x, \Delta y, \Delta z)$ from player |
+| `+0x218` | `int16[64][3]`| `bfsCoords` | Optimal BFS relative offsets $(\Delta x, \Delta y, \Delta z)$ from player |
+
+### Python API Integration
+- **Emitter**: `MinecraftIpcEmitter.emit_observation(obs, game_tick=..., telemetry_bytes=...)`
+- **Reader**: `MinecraftIpcReader.read_inference_telemetry() -> Optional[Dict]`
+- **Visualizer Backend**: `visualizer_server.py` extracts telemetry on each frame and broadcasts it over WebSocket in `frame["pathfinding"]`.
+

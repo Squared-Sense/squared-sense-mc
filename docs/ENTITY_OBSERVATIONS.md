@@ -34,7 +34,7 @@ In debug JSON representations, non-empty cells (`entityCount > 0`) additionally 
 
 ## 3. Hostility Classification Logic
 
-Classification is handled by [`EntityClassifier.java`](file:///c:/Users/Krishna/Projects/Squared%20Sence%20MC/src/client/java/org/sqsense/squared_sense_mc/client/observation/entity/EntityClassifier.java):
+Classification is handled by [`EntityClassifier.java`](/src/client/java/org/sqsense/squared_sense_mc/client/observation/entity/EntityClassifier.java):
 
 ```
                        [Entity in Query Box]

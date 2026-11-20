@@ -57,6 +57,14 @@
     let atlasTexture = null;
     let entityHeadTexture = null;
 
+    // RL Pathfinding Objects & Toggles
+    let targetGroup = null;
+    let trailLine = null;
+    let bfsLine = null;
+    let showTargetBeacon = true;
+    let showAgentTrail = true;
+    let showBfsPath = true;
+
     // Instanced Meshes
     let meshLOD0 = null;
     let meshLOD1 = null;
@@ -204,6 +212,169 @@
         sightlineGroup.add(sightlineTip);
 
         scene.add(sightlineGroup);
+
+        // RL Pathfinding Visuals (Target Beacon, Trajectory Trail, Optimal BFS)
+        initPathfindingVisuals();
+    }
+
+    function initPathfindingVisuals() {
+        targetGroup = new THREE.Group();
+        targetGroup.visible = false;
+
+        // 1. Target Box (1.05m x 1.05m x 1.05m glowing amber box)
+        const tgtGeo = new THREE.BoxGeometry(1.05, 1.05, 1.05);
+        const tgtMat = new THREE.MeshBasicMaterial({
+            color: 0xffaa00,
+            transparent: true,
+            opacity: 0.35,
+            wireframe: false
+        });
+        const tgtMesh = new THREE.Mesh(tgtGeo, tgtMat);
+        tgtMesh.position.y = 0.5;
+        targetGroup.add(tgtMesh);
+
+        const tgtEdgesGeo = new THREE.EdgesGeometry(tgtGeo);
+        const tgtEdgesMat = new THREE.LineBasicMaterial({ color: 0xffea00, linewidth: 2 });
+        const tgtEdges = new THREE.LineSegments(tgtEdgesGeo, tgtEdgesMat);
+        tgtEdges.position.y = 0.5;
+        targetGroup.add(tgtEdges);
+
+        // 2. Vertical Beacon Pillar
+        const beamGeo = new THREE.CylinderGeometry(0.12, 0.12, 24, 16);
+        const beamMat = new THREE.MeshBasicMaterial({
+            color: 0xffea00,
+            transparent: true,
+            opacity: 0.3,
+            depthWrite: false
+        });
+        const beamMesh = new THREE.Mesh(beamGeo, beamMat);
+        beamMesh.position.y = 12.0;
+        targetGroup.add(beamMesh);
+
+        scene.add(targetGroup);
+
+        // 3. Trajectory Polyline (Agent visited trail - Cyan)
+        const maxPts = 64;
+        const trailPositions = new Float32Array(maxPts * 3);
+        const trailGeo = new THREE.BufferGeometry();
+        trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+        const trailMat = new THREE.LineBasicMaterial({ color: 0x00d4ff, linewidth: 3 });
+        trailLine = new THREE.Line(trailGeo, trailMat);
+        trailLine.frustumCulled = false;
+        trailLine.visible = false;
+        scene.add(trailLine);
+
+        // 4. Optimal BFS Path (Gold)
+        const bfsPositions = new Float32Array(maxPts * 3);
+        const bfsGeo = new THREE.BufferGeometry();
+        bfsGeo.setAttribute('position', new THREE.BufferAttribute(bfsPositions, 3));
+        const bfsMat = new THREE.LineBasicMaterial({ color: 0xffd700, linewidth: 2 });
+        bfsLine = new THREE.Line(bfsGeo, bfsMat);
+        bfsLine.frustumCulled = false;
+        bfsLine.visible = false;
+        scene.add(bfsLine);
+    }
+
+    const ACTION_LABELS = ['FORWARD', 'BACKWARD', 'LEFT', 'RIGHT', 'TURN_LEFT', 'TURN_RIGHT'];
+
+    function updatePathfindingTelemetry(pf, header) {
+        if (!pf) {
+            const badge = document.getElementById('badge-pathfinding');
+            if (badge) {
+                badge.textContent = 'STANDBY';
+                badge.style.color = 'var(--text-muted)';
+            }
+            if (targetGroup) targetGroup.visible = false;
+            if (trailLine) trailLine.visible = false;
+            if (bfsLine) bfsLine.visible = false;
+            return;
+        }
+
+        const badge = document.getElementById('badge-pathfinding');
+        if (badge) {
+            badge.textContent = 'ACTIVE';
+            badge.style.color = 'var(--accent-green)';
+        }
+
+        // 1. Target Position in Egocentric Space
+        if (targetGroup && pf.targetRel) {
+            targetGroup.visible = showTargetBeacon;
+            targetGroup.position.set(pf.targetRel[0], pf.targetRel[1], pf.targetRel[2]);
+        }
+
+        // 2. Trajectory Polyline
+        if (trailLine && pf.trailPoints && pf.trailPoints.length > 1) {
+            trailLine.visible = showAgentTrail;
+            const positions = trailLine.geometry.attributes.position.array;
+            const count = Math.min(pf.trailPoints.length, 64);
+            for (let i = 0; i < count; i++) {
+                positions[i * 3 + 0] = pf.trailPoints[i][0];
+                positions[i * 3 + 1] = pf.trailPoints[i][1] + 0.1;
+                positions[i * 3 + 2] = pf.trailPoints[i][2];
+            }
+            trailLine.geometry.setDrawRange(0, count);
+            trailLine.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // 3. Optimal BFS Polyline
+        if (bfsLine && pf.bfsPoints && pf.bfsPoints.length > 1) {
+            bfsLine.visible = showBfsPath;
+            const positions = bfsLine.geometry.attributes.position.array;
+            const count = Math.min(pf.bfsPoints.length, 64);
+            for (let i = 0; i < count; i++) {
+                positions[i * 3 + 0] = pf.bfsPoints[i][0];
+                positions[i * 3 + 1] = pf.bfsPoints[i][1] + 0.15;
+                positions[i * 3 + 2] = pf.bfsPoints[i][2];
+            }
+            bfsLine.geometry.setDrawRange(0, count);
+            bfsLine.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // 4. Update HUD elements
+        const distEl = document.getElementById('rl-target-dist');
+        if (distEl) distEl.textContent = `${pf.remainingDist.toFixed(1)} m`;
+
+        const stepEl = document.getElementById('rl-step-return');
+        if (stepEl) stepEl.textContent = `${pf.step} / ${pf.episodeReturn.toFixed(2)}`;
+
+        const criticEl = document.getElementById('rl-critic-val');
+        if (criticEl) criticEl.textContent = pf.criticValue >= 0 ? `+${pf.criticValue.toFixed(2)}` : pf.criticValue.toFixed(2);
+
+        const lBfsEl = document.getElementById('rl-l-bfs');
+        if (lBfsEl) lBfsEl.textContent = pf.lBfs ?? '--';
+
+        // 5. Update Action Probabilities Bars
+        const container = document.getElementById('action-probs-bars');
+        if (container && pf.actionProbs && pf.actionProbs.length > 0) {
+            let html = '';
+            pf.actionProbs.forEach((prob, idx) => {
+                const label = ACTION_LABELS[idx] || `ACT_${idx}`;
+                const pct = Math.round(prob * 100);
+                const isActive = (idx === pf.chosenAction);
+                html += `
+                    <div class="action-bar-row">
+                        <span class="action-name" title="${label}">${label}</span>
+                        <div class="action-bar-track">
+                            <div class="action-bar-fill ${isActive ? 'active' : ''}" style="width: ${pct}%;"></div>
+                        </div>
+                        <span class="action-pct">${pct}%</span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // 6. Update Checkpoint Stats
+        if (pf.checkpoint) {
+            const ckptSteps = document.getElementById('rl-ckpt-steps');
+            if (ckptSteps) ckptSteps.textContent = pf.checkpoint.steps?.toLocaleString() ?? '--';
+
+            const ckptPLoss = document.getElementById('rl-ckpt-ploss');
+            if (ckptPLoss) ckptPLoss.textContent = pf.checkpoint.policyLoss?.toFixed(4) ?? '--';
+
+            const ckptVLoss = document.getElementById('rl-ckpt-vloss');
+            if (ckptVLoss) ckptVLoss.textContent = pf.checkpoint.valueLoss?.toFixed(4) ?? '--';
+        }
     }
 
     // --- 3. Instanced Meshes & Custom Texture Atlas Shader ---
@@ -491,6 +662,9 @@
 
         // 3. Render Voxels according to mode
         renderFrameVoxels(frame);
+
+        // 4. Update RL Pathfinding Telemetry & Overlays
+        updatePathfindingTelemetry(frame.pathfinding, header);
     }
 
     function updateTelemetryHUD(header, frame) {
@@ -971,6 +1145,31 @@
             showGrid = e.target.checked;
             gridHelper.visible = showGrid;
         });
+
+        // RL Pathfinding Visual Toggles
+        const chkTarget = document.getElementById('chk-show-target');
+        if (chkTarget) {
+            chkTarget.addEventListener('change', (e) => {
+                showTargetBeacon = e.target.checked;
+                if (targetGroup) targetGroup.visible = showTargetBeacon && (latestFrameData && !!latestFrameData.pathfinding);
+            });
+        }
+
+        const chkTrail = document.getElementById('chk-show-trail');
+        if (chkTrail) {
+            chkTrail.addEventListener('change', (e) => {
+                showAgentTrail = e.target.checked;
+                if (trailLine) trailLine.visible = showAgentTrail && (latestFrameData && !!latestFrameData.pathfinding);
+            });
+        }
+
+        const chkBfs = document.getElementById('chk-show-bfs');
+        if (chkBfs) {
+            chkBfs.addEventListener('change', (e) => {
+                showBfsPath = e.target.checked;
+                if (bfsLine) bfsLine.visible = showBfsPath && (latestFrameData && !!latestFrameData.pathfinding);
+            });
+        }
 
         // Interactive Slice Clipping Sliders
         const sliceXMin = document.getElementById('slice-x-min');

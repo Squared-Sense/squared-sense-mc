@@ -41,7 +41,7 @@ This lookup is an $O(1)$ array indexing operation on the GPU with virtually zero
 
 ## 3. Java Mod Architecture (`org.sqsense...observation.palette`)
 
-The palette mapping is implemented in [`BlockVocabulary.java`](file:///c:/Users/Krishna/Projects/Squared%20Sence%20MC/src/client/java/org/sqsense/squared_sense_mc/client/observation/palette/BlockVocabulary.java).
+The palette mapping is implemented in [`BlockVocabulary.java`](/src/client/java/org/sqsense/squared_sense_mc/client/observation/palette/BlockVocabulary.java).
 
 ```
 src/client/java/org/sqsense/squared_sense_mc/client/observation/
@@ -77,7 +77,7 @@ BLOCK_TO_ID.put(Blocks.VOID_AIR, 0);
 ## 4. Export Format & Commands
 
 ### Automatic Export
-Whenever an observation is serialized to the `observations/` directory, [`ObservationJsonSerializer.java`](file:///c:/Users/Krishna/Projects/Squared%20Sence%20MC/src/client/java/org/sqsense/squared_sense_mc/client/observation/serialization/ObservationJsonSerializer.java) automatically checks if `observations/block_vocab.json` exists. If not present, it exports the canonical vocabulary immediately.
+Whenever an observation is serialized to the `observations/` directory, [`ObservationJsonSerializer.java`](/src/client/java/org/sqsense/squared_sense_mc/client/observation/serialization/ObservationJsonSerializer.java) automatically checks if `observations/block_vocab.json` exists. If not present, it exports the canonical vocabulary immediately.
 
 ### In-Game Command: `/observe vocab`
 Players or automated scripts can explicitly regenerate the vocabulary JSON at any time:

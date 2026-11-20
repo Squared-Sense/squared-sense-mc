@@ -216,6 +216,80 @@
                 </div>
             </div>
         </div>
+
+        <!-- 6. RL Pathfinding & Inference Telemetry -->
+        <div class="accordion-section open" id="section-pathfinding">
+            <div class="section-title accordion-header">
+                <span>RL Pathfinding & Inference</span>
+                <div class="header-meta">
+                    <span id="badge-pathfinding" class="badge" style="color: var(--accent-green);">STANDBY</span>
+                    <span class="chevron">▾</span>
+                </div>
+            </div>
+            <div class="accordion-body">
+                <div class="toggle-list">
+                    <label class="toggle-item">
+                        <span>Target Beacon (3D)</span>
+                        <input type="checkbox" id="chk-show-target" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <label class="toggle-item">
+                        <span>Agent Trajectory (Cyan)</span>
+                        <input type="checkbox" id="chk-show-trail" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <label class="toggle-item">
+                        <span>Optimal BFS Path (Gold)</span>
+                        <input type="checkbox" id="chk-show-bfs" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="rl-metrics-card">
+                    <div class="rl-metric-row">
+                        <span class="stat-label">Target Dist:</span>
+                        <span id="rl-target-dist" class="stat-value" style="color: var(--accent-cyan);">-- m</span>
+                    </div>
+                    <div class="rl-metric-row">
+                        <span class="stat-label">Step / Return:</span>
+                        <span id="rl-step-return" class="stat-value">0 / 0.00</span>
+                    </div>
+                    <div class="rl-metric-row">
+                        <span class="stat-label">Critic V(s):</span>
+                        <span id="rl-critic-val" class="stat-value" style="color: var(--accent-yellow);">--</span>
+                    </div>
+                    <div class="rl-metric-row">
+                        <span class="stat-label">Optimal L_BFS:</span>
+                        <span id="rl-l-bfs" class="stat-value">--</span>
+                    </div>
+                </div>
+
+                <!-- Action Probabilities Distribution -->
+                <div class="action-probs-container">
+                    <div class="sub-label">Action Probabilities</div>
+                    <div id="action-probs-bars" class="action-bars-grid">
+                        <div style="color: var(--text-muted); font-size: 10px;">Waiting for stream...</div>
+                    </div>
+                </div>
+
+                <!-- Checkpoint Training Loss Stats -->
+                <div class="ckpt-card">
+                    <div class="sub-label">Checkpoint Stats</div>
+                    <div class="rl-metric-row">
+                        <span class="stat-label">Trained Steps:</span>
+                        <span id="rl-ckpt-steps" class="stat-value">--</span>
+                    </div>
+                    <div class="rl-metric-row">
+                        <span class="stat-label">Policy Loss:</span>
+                        <span id="rl-ckpt-ploss" class="stat-value">--</span>
+                    </div>
+                    <div class="rl-metric-row">
+                        <span class="stat-label">Value Loss:</span>
+                        <span id="rl-ckpt-vloss" class="stat-value">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </aside>
 
     <!-- Floating Quick Camera Pill (Always accessible at bottom center) -->

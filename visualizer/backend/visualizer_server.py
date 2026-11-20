@@ -194,12 +194,14 @@ class VoxelFrameExtractor:
             "lodMode": str(lod_mode)
         }
 
+        telemetry = self.reader.read_inference_telemetry()
+
         if lod_mode == "all":
             # Multi-LOD Overlap View (returns all 3 LODs)
             b0 = self.extract_lod_voxels(active_slot, 0, header)
             b1 = self.extract_lod_voxels(active_slot, 1, header)
             b2 = self.extract_lod_voxels(active_slot, 2, header)
-            return {
+            frame_res = {
                 "header": frame_header,
                 "mode": "all",
                 "lod0": b0,
@@ -215,7 +217,7 @@ class VoxelFrameExtractor:
             lod = int(lod_mode) if str(lod_mode).isdigit() else 0
             lod = max(0, min(2, lod))
             voxels = self.extract_lod_voxels(active_slot, lod, header)
-            return {
+            frame_res = {
                 "header": frame_header,
                 "mode": "single",
                 "lod": lod,
@@ -225,6 +227,10 @@ class VoxelFrameExtractor:
                     "activeVoxels": len(voxels)
                 }
             }
+
+        if telemetry:
+            frame_res["pathfinding"] = telemetry
+        return frame_res
 
 
     def generate_demo_frame(self, lod_mode: str = "0", tick: int = 0) -> Dict:

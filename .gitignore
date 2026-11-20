@@ -24,9 +24,12 @@ run
 
 __pycache__/
 *.pyc
+.venv
 
 # Offline baked datasets and test artifacts
 baked_regions/
 baked_regions_test/
 *.mmap
 *.bin
+checkpoints/
+test_checkpoints/

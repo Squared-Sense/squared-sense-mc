@@ -258,6 +258,20 @@ class MinecraftIpcReader:
             "total_health": total_health
         }
 
+    def read_inference_telemetry(self) -> Optional[Dict]:
+        """Reads optional Inference Telemetry from Header Page 0 (offset 256)."""
+        if not self.ensure_current_mapping():
+            return None
+        if not self.mmap_obj or len(self.mmap_obj) < 256 + 1024:
+            return None
+        self.mmap_obj.seek(256)
+        tel_bytes = self.mmap_obj.read(1024)
+        try:
+            from offline.ipc_telemetry import InferenceTelemetry
+            return InferenceTelemetry.unpack(tel_bytes)
+        except Exception:
+            return None
+
 
 def main():
     reader = MinecraftIpcReader()

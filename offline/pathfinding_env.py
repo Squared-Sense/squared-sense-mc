@@ -204,6 +204,9 @@ class MinecraftPathfindingEnv(gym.Env):
         rx, rz = vecs["right"]
 
         # Action Execution
+        if not self.allow_turns and action >= 4:
+            raise ValueError(f"Invalid action {action} when allow_turns is False")
+
         if action == ACTION_FORWARD:
             nx, ny, nz, outcome, _ = self.kernel.step(
                 self.player_pos[0], self.player_pos[1], self.player_pos[2], fx, fz
@@ -214,14 +217,14 @@ class MinecraftPathfindingEnv(gym.Env):
                 self.player_pos[0], self.player_pos[1], self.player_pos[2], -fx, -fz
             )
             self.player_pos = (nx, ny, nz)
-        elif action == ACTION_RIGHT:
-            nx, ny, nz, outcome, _ = self.kernel.step(
-                self.player_pos[0], self.player_pos[1], self.player_pos[2], rx, rz
-            )
-            self.player_pos = (nx, ny, nz)
         elif action == ACTION_LEFT:
             nx, ny, nz, outcome, _ = self.kernel.step(
                 self.player_pos[0], self.player_pos[1], self.player_pos[2], -rx, -rz
+            )
+            self.player_pos = (nx, ny, nz)
+        elif action == ACTION_RIGHT:
+            nx, ny, nz, outcome, _ = self.kernel.step(
+                self.player_pos[0], self.player_pos[1], self.player_pos[2], rx, rz
             )
             self.player_pos = (nx, ny, nz)
         elif action == ACTION_TURN_LEFT:

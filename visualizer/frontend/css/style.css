@@ -623,3 +623,79 @@ input:checked + .slider-track:before {
     }
 }
 
+/* RL Pathfinding & Inspection Panel */
+.rl-metrics-card, .ckpt-card {
+    background: rgba(13, 15, 20, 0.7);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-top: 8px;
+    font-size: 11px;
+}
+
+.rl-metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.sub-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.action-probs-container {
+    margin-top: 8px;
+    background: rgba(13, 15, 20, 0.7);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+.action-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-family: monospace;
+}
+
+.action-name {
+    width: 70px;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.action-bar-track {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.action-bar-fill {
+    height: 100%;
+    background: var(--accent-cyan);
+    border-radius: 4px;
+    transition: width 0.15s ease-out;
+}
+
+.action-bar-fill.active {
+    background: var(--accent-green);
+}
+
+.action-pct {
+    width: 34px;
+    text-align: right;
+    color: var(--text-primary);
+}
+
