@@ -30,6 +30,8 @@
     let showPlayerBox = true;
     let showGrid = true;
     let hideMaskedVoxels = true; // Phase 5: Hide culled underworld voxels in normal modes
+    let isPaperMode = false;
+    let ambientLight = null;
 
     // Slice clipping range (0..15 in grid coordinates)
     const slices = {
@@ -122,7 +124,7 @@
         camera.position.set(16, 20, 24);
 
         // WebGL Renderer
-        renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.toneMapping = THREE.LinearToneMapping;
@@ -137,7 +139,7 @@
         controls.minDistance = 1.0;
 
         // Lighting (Directional + Ambient + Fill)
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+        ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
         scene.add(ambientLight);
 
         const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.75);
@@ -1115,6 +1117,55 @@
                 if (latestFrameData) {
                     renderFrameVoxels(latestFrameData);
                 }
+            });
+        }
+
+        // Paper Mode (Springer LNEE Compliance) & Figure Export
+        const togglePaperMode = document.getElementById('toggle-paper-mode');
+        if (togglePaperMode) {
+            togglePaperMode.addEventListener('change', (e) => {
+                isPaperMode = e.target.checked;
+                if (isPaperMode) {
+                    scene.background = new THREE.Color(0xffffff);
+                    scene.fog = null;
+                    if (ambientLight) ambientLight.intensity = 1.0;
+                    shaderUniforms.uUseAtlas.value = 0.0;
+                    if (meshEntityHeads) meshEntityHeads.visible = false;
+                } else {
+                    scene.background = new THREE.Color(0x0d0f14);
+                    scene.fog = new THREE.FogExp2(0x0d0f14, 0.01);
+                    if (ambientLight) ambientLight.intensity = 0.65;
+                    shaderUniforms.uUseAtlas.value = (currentRenderMode === 'texture') ? 1.0 : 0.0;
+                    if (meshEntityHeads) meshEntityHeads.visible = showEntityHeads;
+                }
+                if (latestFrameData) {
+                    renderFrameVoxels(latestFrameData);
+                }
+            });
+        }
+
+        const btnExportFigure = document.getElementById('btn-export-figure');
+        if (btnExportFigure) {
+            btnExportFigure.addEventListener('click', () => {
+                const targetW = 2400;
+                const targetH = 1800;
+
+                camera.aspect = targetW / targetH;
+                camera.updateProjectionMatrix();
+                renderer.setSize(targetW, targetH, false);
+                renderer.render(scene, camera);
+
+                const dataURL = renderer.domElement.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = `squared_sense_lnee_figure_${Date.now()}.png`;
+                link.href = dataURL;
+                link.click();
+
+                // Restore viewport
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight, true);
+                renderer.render(scene, camera);
             });
         }
 

@@ -11,7 +11,10 @@ import time
 from typing import Dict, Optional, Tuple
 import numpy as np
 
-import mc_ipc_layout as layout
+try:
+    from . import mc_ipc_layout as layout
+except ImportError:
+    import mc_ipc_layout as layout
 
 CARDINAL_NAMES = ["SOUTH", "WEST", "NORTH", "EAST"]
 
@@ -267,7 +270,10 @@ class MinecraftIpcReader:
         self.mmap_obj.seek(256)
         tel_bytes = self.mmap_obj.read(1024)
         try:
-            from offline.ipc_telemetry import InferenceTelemetry
+            try:
+                from .ipc_telemetry import InferenceTelemetry
+            except ImportError:
+                from ipc_telemetry import InferenceTelemetry
             return InferenceTelemetry.unpack(tel_bytes)
         except Exception:
             return None
