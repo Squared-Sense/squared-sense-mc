@@ -396,6 +396,7 @@ class VisualizerServer:
         self.connected_ws: Set = set()
         self.running = False
         self.demo_tick = 0
+        self.reader_lock = threading.Lock()
 
     def start(self):
         self.running = True
@@ -435,28 +436,29 @@ class VisualizerServer:
                 continue
 
             try:
-                if not self.reader.is_open():
-                    if not self.reader.open():
-                        time.sleep(1.0)
-                        continue
-                    print(f"[VisualizerServer] Connected to MMF IPC at {self.reader.shm_path}")
+                with self.reader_lock:
+                    if not self.reader.is_open():
+                        if not self.reader.open():
+                            time.sleep(1.0)
+                            continue
+                        print(f"[VisualizerServer] Connected to MMF IPC at {self.reader.shm_path}")
 
-                header = self.reader.read_header()
-                if header:
-                    seq = header["sequenceId"]
-                    if seq != self.latest_seq:
-                        self.latest_seq = seq
-                        slot = header["activeSlot"]
-                        frame = self.extractor.build_frame(slot, self.active_lod_mode)
-                        if frame:
-                            self.latest_frame = frame
-                            if HAS_WEBSOCKETS and self.connected_ws and hasattr(self, "async_loop"):
-                                msg = json.dumps(frame)
-                                for ws in list(self.connected_ws):
-                                    try:
-                                        asyncio.run_coroutine_threadsafe(ws.send(msg), self.async_loop)
-                                    except Exception:
-                                        pass
+                    header = self.reader.read_header()
+                    if header:
+                        seq = header["sequenceId"]
+                        if seq != self.latest_seq:
+                            self.latest_seq = seq
+                            slot = header["activeSlot"]
+                            frame = self.extractor.build_frame(slot, self.active_lod_mode)
+                            if frame:
+                                self.latest_frame = frame
+                                if HAS_WEBSOCKETS and self.connected_ws and hasattr(self, "async_loop"):
+                                    msg = json.dumps(frame)
+                                    for ws in list(self.connected_ws):
+                                        try:
+                                            asyncio.run_coroutine_threadsafe(ws.send(msg), self.async_loop)
+                                        except Exception:
+                                            pass
             except Exception as poll_err:
                 time.sleep(0.05)
             time.sleep(0.02)  # 50 Hz poll
@@ -481,6 +483,8 @@ class VisualizerServer:
                     cmd = data.get("cmd")
                     if cmd == "set_lod":
                         mode = str(data.get("lod", "0"))
+                        if mode not in ("0", "1", "2", "all"):
+                            mode = "0"
                         self.active_lod_mode = mode
                         print(f"[VisualizerServer] Switched LOD mode to: {mode}")
                         if self.demo:
@@ -488,12 +492,13 @@ class VisualizerServer:
                             self.latest_frame = frame
                             await websocket.send(json.dumps(frame))
                         else:
-                            header = self.reader.read_header()
-                            if header:
-                                frame = self.extractor.build_frame(header["activeSlot"], self.active_lod_mode)
-                                if frame:
-                                    self.latest_frame = frame
-                                    await websocket.send(json.dumps(frame))
+                            with self.reader_lock:
+                                header = self.reader.read_header()
+                                if header:
+                                    frame = self.extractor.build_frame(header["activeSlot"], self.active_lod_mode)
+                                    if frame:
+                                        self.latest_frame = frame
+                                        await websocket.send(json.dumps(frame))
                 except Exception as e:
                     print(f"[VisualizerServer] WS client message error: {e}")
         except websockets.exceptions.ConnectionClosed:
@@ -580,6 +585,30 @@ class VisualizerServer:
                         "connectedClients": len(server_self.connected_ws)
                     }
                     self.wfile.write(json.dumps(status).encode("utf-8"))
+                    return
+
+                if path == "/api/set_lod":
+                    from urllib.parse import parse_qs, urlparse
+                    query = parse_qs(urlparse(self.path).query)
+                    mode = str(query.get("lod", ["0"])[0])
+                    if mode not in ("0", "1", "2", "all"):
+                        mode = "0"
+                    server_self.active_lod_mode = mode
+                    if server_self.demo:
+                        frame = server_self.extractor.generate_demo_frame(server_self.active_lod_mode, server_self.demo_tick)
+                        server_self.latest_frame = frame
+                    else:
+                        with server_self.reader_lock:
+                            header = server_self.reader.read_header()
+                            if header:
+                                frame = server_self.extractor.build_frame(header["activeSlot"], server_self.active_lod_mode)
+                                if frame:
+                                    server_self.latest_frame = frame
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(json.dumps(server_self.latest_frame or {}).encode("utf-8"))
                     return
 
                 if path == "/api/frame":

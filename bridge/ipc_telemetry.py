@@ -102,16 +102,16 @@ class InferenceTelemetry:
         # To avoid overflow, clamp to int16 range [-32768..32767]
         trail_coords = bytearray(MAX_PATH_POINTS * 3 * 2)
         for i, (wx, wy, wz) in enumerate(trail):
-            dx = max(-32000, min(32000, wx - player_pos[0]))
-            dy = max(-32000, min(32000, wy - player_pos[1]))
-            dz = max(-32000, min(32000, wz - player_pos[2]))
+            dx = int(round(max(-32000, min(32000, wx - player_pos[0]))))
+            dy = int(round(max(-32000, min(32000, wy - player_pos[1]))))
+            dz = int(round(max(-32000, min(32000, wz - player_pos[2]))))
             struct.pack_into("<hhh", trail_coords, i * 6, dx, dy, dz)
 
         bfs_coords = bytearray(MAX_PATH_POINTS * 3 * 2)
         for i, (wx, wy, wz) in enumerate(bfs):
-            dx = max(-32000, min(32000, wx - player_pos[0]))
-            dy = max(-32000, min(32000, wy - player_pos[1]))
-            dz = max(-32000, min(32000, wz - player_pos[2]))
+            dx = int(round(max(-32000, min(32000, wx - player_pos[0]))))
+            dy = int(round(max(-32000, min(32000, wy - player_pos[1]))))
+            dz = int(round(max(-32000, min(32000, wz - player_pos[2]))))
             struct.pack_into("<hhh", bfs_coords, i * 6, dx, dy, dz)
 
         return header_bytes + bytes(trail_coords) + bytes(bfs_coords)

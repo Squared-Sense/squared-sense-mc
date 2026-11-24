@@ -228,7 +228,7 @@
         const tgtMat = new THREE.MeshBasicMaterial({
             color: 0xffaa00,
             transparent: true,
-            opacity: 0.35,
+            opacity: 0.55,
             wireframe: false
         });
         const tgtMesh = new THREE.Mesh(tgtGeo, tgtMat);
@@ -242,16 +242,17 @@
         targetGroup.add(tgtEdges);
 
         // 2. Vertical Beacon Pillar
-        const beamGeo = new THREE.CylinderGeometry(0.12, 0.12, 24, 16);
+        const beamGeo = new THREE.CylinderGeometry(0.15, 0.15, 24, 16);
         const beamMat = new THREE.MeshBasicMaterial({
             color: 0xffea00,
             transparent: true,
-            opacity: 0.3,
+            opacity: 0.45,
             depthWrite: false
         });
         const beamMesh = new THREE.Mesh(beamGeo, beamMat);
         beamMesh.position.y = 12.0;
         targetGroup.add(beamMesh);
+        targetGroup.renderOrder = 10;
 
         scene.add(targetGroup);
 
@@ -277,7 +278,11 @@
         scene.add(bfsLine);
     }
 
-    const ACTION_LABELS = ['FORWARD', 'BACKWARD', 'LEFT', 'RIGHT', 'TURN_LEFT', 'TURN_RIGHT'];
+    const ACTION_LABELS = [
+        'FORWARD', 'FWD_LEFT', 'FWD_RIGHT', 'STRAFE_L',
+        'STRAFE_R', 'BACKWARD', 'TURN_L', 'TURN_R',
+        'STEP_UP', 'PITCH_UP', 'PITCH_DN', 'IDLE'
+    ];
 
     function updatePathfindingTelemetry(pf, header) {
         if (!pf) {
@@ -503,6 +508,7 @@
         meshLOD0 = new THREE.InstancedMesh(geoLOD0, matLOD0, MAX_INSTANCES);
         meshLOD0.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES * 3).fill(1.0), 3);
         meshLOD0.count = 0;
+        meshLOD0.frustumCulled = false;
         scene.add(meshLOD0);
 
         // --- LOD 1 InstancedMesh (Unit geometry scaled by stride 2.0) ---
@@ -517,6 +523,7 @@
         meshLOD1.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES * 3).fill(1.0), 3);
         meshLOD1.count = 0;
         meshLOD1.visible = false;
+        meshLOD1.frustumCulled = false;
         scene.add(meshLOD1);
 
         // --- LOD 2 InstancedMesh Solid (Unit geometry scaled by stride 4.0) ---
@@ -531,6 +538,7 @@
         meshLOD2.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES * 3).fill(1.0), 3);
         meshLOD2.count = 0;
         meshLOD2.visible = false;
+        meshLOD2.frustumCulled = false;
         scene.add(meshLOD2);
 
         // --- LOD 2 InstancedMesh Wireframe Bounds (For Multi-LOD Overlap View) ---
@@ -544,6 +552,7 @@
         meshLOD2Wire = new THREE.InstancedMesh(geoLOD2Wire, matLOD2Wire, MAX_INSTANCES);
         meshLOD2Wire.count = 0;
         meshLOD2Wire.visible = false;
+        meshLOD2Wire.frustumCulled = false;
         scene.add(meshLOD2Wire);
 
         // --- Entity Wireframe Boxes (Hostile = Pulsing Red, Passive = Bright Green) ---
@@ -892,8 +901,11 @@
 
             // 2. LOD 1 (Semi-transparent 2m)
             meshLOD1.visible = true;
+            if (!meshLOD1.material.transparent) {
+                meshLOD1.material.transparent = true;
+                meshLOD1.material.needsUpdate = true;
+            }
             meshLOD1.material.opacity = 0.35;
-            meshLOD1.material.transparent = true;
             meshLOD1.material.depthWrite = false;
             const b1Voxels = (frame.lod1 || []).filter(isVoxelInSlice);
             populateInstancedMesh(meshLOD1, b1Voxels, 2.0, 1.0);
@@ -926,8 +938,11 @@
                 populateInstancedMesh(meshLOD0, voxels, 1.0, 1.0);
             } else if (lod === 1) {
                 // In single LOD 1 view, render solid
+                if (meshLOD1.material.transparent) {
+                    meshLOD1.material.transparent = false;
+                    meshLOD1.material.needsUpdate = true;
+                }
                 meshLOD1.material.opacity = 1.0;
-                meshLOD1.material.transparent = false;
                 meshLOD1.material.depthWrite = true;
                 populateInstancedMesh(meshLOD1, voxels, 2.0, 1.0);
             } else if (lod === 2) {
@@ -1083,12 +1098,21 @@
                 currentLodMode = chosenLod;
                 lodLabel.textContent = chosenLod === 'all' ? 'Multi-LOD Overlap' : `LOD ${chosenLod}`;
 
-                // Send LOD change request to backend over WebSocket
+                // Send LOD change request to backend over WebSocket, or HTTP fallback
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({ cmd: 'set_lod', lod: chosenLod }));
+                } else {
+                    fetch(`/api/set_lod?lod=${encodeURIComponent(chosenLod)}`)
+                        .then(resp => resp.ok ? resp.json() : null)
+                        .then(frame => {
+                            if (frame && frame.header) {
+                                handleNewFrame(frame);
+                            }
+                        })
+                        .catch(() => {});
                 }
 
-                // If offline or polling, re-render immediately
+                // Re-render immediately if current frame already matches
                 if (latestFrameData) {
                     renderFrameVoxels(latestFrameData);
                 }
